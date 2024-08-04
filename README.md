@@ -29,6 +29,8 @@ The hardware components I have included in this first revision are the following
   - BQ27441 Fuel gauge
   - single 18650 battery holder
  
+# 3D preview
+![3d preview](https://raw.githubusercontent.com/bartkodden/ESP_MKB/7820651de039026d2021146be1b5c34a28a80707/Hardware/Files/3D_PCB_top.png)
 # IO list
 <table>
   <tr>
