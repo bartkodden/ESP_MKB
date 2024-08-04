@@ -1,5 +1,5 @@
 # ESP_MKB
-ESP32 driven macro keyboard
+ESP32 driven macro keyboard built for personal use but documented for the sake of open source development.
 
 # Overview
 This is a project born out of personal necessity to have a dedicated programmable macro keyboard on my desk which I can control easily and bind functions I use a lot to buttons of my own choice.
@@ -7,6 +7,7 @@ I have made a similar project ~5 years ago which featured an arduino pro micro, 
 This project aims to solve my main problem with that board: the wire going from the arduino to my PC.
 
 By making this new project use an ESP32-C6 I will try to add a lot more functionality to the systems than was previously possible.
+My intent for this project is the ability to support multiple use cases, either directly connected to a PC, or by having it connected to a network where it will be able to connect to home assistant.
 
 # Hardware
 The main SOC is an ESP32-C6-Mini-1-N4. By using this specific ESP32 I will not only get WIFI+BT but also gain the option to later on include matter support and other cool stuff.
@@ -29,25 +30,34 @@ The hardware components I have included in this first revision are the following
   - single 18650 battery holder
  
 # IO list
-IO00 = SPI_SDA
-IO01 = SPI_SCK
-IO02 = POT_1
-IO03 = POT_2
-IO04 = SPI_DC
-IO05 = SI_RES
-IO06 = TCA8418 INTERRUPT
-IO07 = TCA8418 MATRIX RESET
-IO08 = LED DATA
-IO09 = SPI_BL (+BOOT MODE)
-IO12 = UD-
-IO13 = UD+
-IO14 = SDA
-IO15 = SCL
-IO16 = ENCODER A
-IO17 = ENCODER B
-IO18 = SPI_CS
-IO19 = CHARGING (MCP73871)
-IO20 = BATTERY MEASURE (BQ27441)
-IO21 = MIC_WS
-IO22 = MIC_BCLK
-IO23 = MIC_DATA
+<table>
+  <tr>
+    <th>IO PIN</th>
+    <th>Function</th>
+    <th>Detail</th>
+  </tr>
+  <tr><td>IO00</td><td>SPI SDA</td><td></td></tr>
+  <tr><td>IO01</td><td>SPI SCK</td><td></td></tr>
+  <tr><td>IO02</td><td>POT 1</td><td>Analog</td></tr>
+  <tr><td>IO03</td><td>POT 2</td><td>Analog</td></tr>
+  <tr><td>IO04</td><td>SPI DC</td><td></td></tr>
+  <tr><td>IO05</td><td>SPI RES</td><td></td></tr>
+  <tr><td>IO06</td><td>TCA8418 INTERRUPT</td><td></td></tr>
+  <tr><td>IO07</td><td>TCA8418 MATRIX RESET</td><td></td></tr>
+  <tr><td>IO08</td><td>LED DATA</td><td></td></tr>
+  <tr><td>IO09</td><td>SPI BL</td><td>Boot mode</td></tr>
+  <tr><td>IO12</td><td>UD-</td><td></td></tr>
+  <tr><td>IO13</td><td>UD+</td><td></td></tr>
+  <tr><td>IO14</td><td>I2C SDA</td><td></td></tr>
+  <tr><td>IO15</td><td>I2C SCL</td><td></td></tr>
+  <tr><td>IO16</td><td>ENCODER A</td><td></td></tr>
+  <tr><td>IO17</td><td>ENCODER B</td><td></td></tr> 
+  <tr><td>IO18</td><td>SPI CS</td><td></td></tr>
+  <tr><td>IO19</td><td>CHARGING Y/N</td><td>MCP73871</td></tr>
+  <tr><td>IO20</td><td>BATTERY MEASURE</td><td>BQ27441</td></tr>
+  <tr><td>IO21</td><td>I2S WS</td><td></td></tr>
+  <tr><td>IO22</td><td>I2S BCLK</td><td></td></tr>
+  <tr><td>IO23</td><td>I2S DATA</td><td></td></tr> 
+</table>
+
+# Schematic
