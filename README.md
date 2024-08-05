@@ -25,12 +25,16 @@ The hardware components I have included in this first revision are the following
 - 1x encoder
 - 18x RGB LED (XL-1615RGBC-WS2812B on top side / 5050 WS2812B on bottom)
 - BMS system consisting of:
-  - MCP73871 Charge controller
+  - MCP73871 Charge controller (Vout = Vbat (~3.7v) or Vout = Vusb (5.0v) when charging)
   - BQ27441 Fuel gauge
   - single 18650 battery holder
+- Voltage regulation happens after MCP73871:
+  - TPS63051 3.3v buck-boost regulator (Vin min = 2.5v - Vin max = 5.5v)
+  - TPS613222 5.0v boost regulator (Vin min = 0.9v - Vin max = 5.5v)
  
 # 3D preview
 ![3d preview](https://raw.githubusercontent.com/bartkodden/ESP_MKB/7820651de039026d2021146be1b5c34a28a80707/Hardware/Files/3D_PCB_top.png)
+
 # IO list
 <table>
   <tr>
@@ -63,3 +67,11 @@ The hardware components I have included in this first revision are the following
 </table>
 
 # Schematic
+ESP32C6, resistor networks, switches, communication buses and mounting hardware:
+![ESP32 schematic](https://raw.githubusercontent.com/bartkodden/ESP_MKB/main/Hardware/Files/sch_esp32.png)
+
+Power supply, battery management system and USB connection and voltage regulation
+![Power schematic](https://raw.githubusercontent.com/bartkodden/ESP_MKB/main/Hardware/Files/sch_pwr.png)
+
+Main IO
+![IO schematic](https://raw.githubusercontent.com/bartkodden/ESP_MKB/main/Hardware/Files/sch_IO.png)
