@@ -2,6 +2,69 @@
 The ESP_MKB hardware and PCB design were done in EasyEDA Pro.
 <a href="https://oshwlab.com/bart_1855/macrokb">Link to the project page</a>
 
+# MCP73871 settings
+the battery charge controller IC has a couple of settings which need to be set to the correct value or reference voltage to maken sure the IC works es intended for the circuit it is installed in.
+I have made my choices regarding these settings according to the datasheet and some online sources.
+The settings for Version 1.0 of the ESP_MKB are as follows:
+<table>
+	<tr>
+		<th>Setting</th>
+		<th>Pin</th>
+		<th>Description</th>
+		<th>Choice</th>
+		<th>Notes</th>
+	</tr>
+	<tr>
+		<td>SEL</td>
+		<td>3</td>
+		<td>POWER SOURCE SELECT (H=AC-DC, L=USB)</td>
+		<td>Low (GND)</td>
+		<td>Only USB is used</td>
+	</tr>
+	<tr>
+		<td>PROG1</td>
+		<td>13</td>
+		<td>Fast charge current regulation setting with SEL = high.</td>
+		<td>2K TO GND (500mA)</td>
+		<td>Unsure if this setting is ignored. used 2K Ohm to set to 500mA anyway</td>
+	</tr>
+	<tr>
+		<td>PROG2</td>
+		<td>4</td>
+		<td>USB input current limit selection (L=100mA, H = 500 mA)</td>
+		<td>High (Vin)</td>
+		<td>500mA is the target over USBC</td>
+	</tr>
+	<tr>
+		<td>PROG3</td>
+		<td>12</td>
+		<td>Termination set point for USB port</td>
+		<td>100K Ohm to GND</td>
+		<td>Stop charging when charge current is 10mA</td>
+	</tr>
+	<tr>
+		<td>TE</td>
+		<td>9</td>
+		<td>Timer Enable; Enables Safety Timer when active-low</td>
+		<td>High (Vin)</td>
+		<td>Timer is disabled in stock board, but solderjumper is availabe to enable it after testing</td>
+	</tr>
+	<tr>
+		<td>CE</td>
+		<td>17</td>
+		<td>Device Charge Enable; Enabled when CE = high</td>
+		<td>High (Vin)</td>
+		<td>Charging is enabled whn USB is connected</td>
+	</tr>
+	<tr>
+		<td>VPCC</td>
+		<td>2</td>
+		<td>Voltage Proportional Current Control</td>
+		<td>Vvpcc=1.23v, R1=270K, R2=100K</td>
+		<td>If USB voltage is lower than expected, slow down charging, stop at 4.5v</td>
+	</tr>
+</table>
+
 #BOM
 <table border="1" cellpadding="0" cellspacing="0">
 	<tbody>
