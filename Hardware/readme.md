@@ -5,6 +5,9 @@ The ESP_MKB hardware and PCB design were done in EasyEDA Pro.
 # MCP73871 settings
 the battery charge controller IC has a couple of settings which need to be set to the correct value or reference voltage to maken sure the IC works es intended for the circuit it is installed in.
 I have made my choices regarding these settings according to the datasheet and some online sources.
+
+![MCP73871 layout](https://github.com/user-attachments/assets/27451eda-61b2-4df2-9409-dfa072613aa6)
+
 The settings for Version 1.0 of the ESP_MKB are as follows:
 <table>
 	<tr>
