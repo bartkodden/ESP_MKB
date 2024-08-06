@@ -374,7 +374,7 @@ The settings for Version 1.0 of the ESP_MKB are as follows:
 			<td>TI</td>
 			<td>BQ27441DRZR-G1B</td>
 			<td>&nbsp;</td>
-			<td><a href="https://www.ti.com/cn/lit/gpn/bq27441-g1">Datasheet</a></td>
+			<td><a href="https://www.ti.com/lit/gpn/bq27441-g1">Datasheet</a></td>
 			<td>&nbsp;</td>
 		</tr>
 		<tr>
@@ -383,7 +383,7 @@ The settings for Version 1.0 of the ESP_MKB are as follows:
 			<td>TI</td>
 			<td>TPS63051RMWR</td>
 			<td>&nbsp;</td>
-			<td><a href="https://www.ti.com/cn/lit/gpn/tps63051">Datasheet</a></td>
+			<td><a href="https://www.ti.com/lit/gpn/tps63051">Datasheet</a></td>
 			<td>&nbsp;</td>
 		</tr>
 		<tr>
@@ -392,7 +392,7 @@ The settings for Version 1.0 of the ESP_MKB are as follows:
 			<td>TI</td>
 			<td>TPS613222ADBVR</td>
 			<td>&nbsp;</td>
-			<td><a href="https://www.ti.com/cn/lit/gpn/tps61322">Datasheet</a></td>
+			<td><a href="https://www.ti.com/lit/gpn/tps61322">Datasheet</a></td>
 			<td>&nbsp;</td>
 		</tr>
 		<tr>
@@ -401,7 +401,7 @@ The settings for Version 1.0 of the ESP_MKB are as follows:
 			<td>TI</td>
 			<td>TCA8418RTWR</td>
 			<td>&nbsp;</td>
-			<td><a href="https://www.ti.com/cn/lit/gpn/tca8418">Datasheet</a></td>
+			<td><a href="https://www.ti.com/lit/gpn/tca8418">Datasheet</a></td>
 			<td>&nbsp;</td>
 		</tr>
 		<tr>
