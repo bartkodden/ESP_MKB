@@ -47,20 +47,20 @@ The hardware components I have included in this first revision are the following
   <tr><td>IO02</td><td>POT 1</td><td>Analog</td></tr>
   <tr><td>IO03</td><td>POT 2</td><td>Analog</td></tr>
   <tr><td>IO04</td><td>SPI DC</td><td></td></tr>
-  <tr><td>IO05</td><td>SPI RES</td><td></td></tr>
-  <tr><td>IO06</td><td>TCA8418 INTERRUPT</td><td></td></tr>
-  <tr><td>IO07</td><td>TCA8418 MATRIX RESET</td><td></td></tr>
-  <tr><td>IO08</td><td>LED DATA</td><td></td></tr>
-  <tr><td>IO09</td><td>SPI BL</td><td>Boot mode</td></tr>
+  <tr><td>IO05</td><td>SPI RES</td><td>On rev 0 board SPI screen needs this pin to be used as SPI_BL</td></tr>
+  <tr><td>IO06</td><td>TCA8418 INTERRUPT</td><td>Pullup 10K to 3v3</td></tr>
+  <tr><td>IO07</td><td>TCA8418 MATRIX RESET</td><td>Pullup 10K to 3v3</td></tr>
+  <tr><td>IO08</td><td>LED DATA</td><td>Pullup 10K to 3v3, Mistake on Rev 0: Ldata needs pullup to 5V0. Cut trace on rev 0 to disable pullup</td></tr>
+  <tr><td>IO09</td><td>SPI BL</td><td>Rev 0 mistake: Can not be used as SPI BL in combination with Boot mode on IO9</td></tr>
   <tr><td>IO12</td><td>UD-</td><td></td></tr>
   <tr><td>IO13</td><td>UD+</td><td></td></tr>
-  <tr><td>IO14</td><td>I2C SDA</td><td></td></tr>
-  <tr><td>IO15</td><td>I2C SCL</td><td></td></tr>
-  <tr><td>IO16</td><td>ENCODER A</td><td></td></tr>
-  <tr><td>IO17</td><td>ENCODER B</td><td></td></tr> 
+  <tr><td>IO14</td><td>I2C SDA</td><td>Pullup 10K to 3v3</td></tr>
+  <tr><td>IO15</td><td>I2C SCL</td><td>Pullup 10K to 3v3</td></tr>
+  <tr><td>IO16</td><td>ENCODER A</td><td>Pullup 10K to 3v3</td></tr>
+  <tr><td>IO17</td><td>ENCODER B</td><td>Pullup 10K to 3v3</td></tr>
   <tr><td>IO18</td><td>SPI CS</td><td></td></tr>
-  <tr><td>IO19</td><td>CHARGING Y/N</td><td>MCP73871</td></tr>
-  <tr><td>IO20</td><td>BATTERY MEASURE</td><td>BQ27441</td></tr>
+  <tr><td>IO19</td><td>CHARGING Y/N</td><td>MCP73871 Pullup 10K to 3v3</td></tr>
+  <tr><td>IO20</td><td>BATTERY MEASURE</td><td>BQ27441 Pullup 10K to 3v3</td></tr>
   <tr><td>IO21</td><td>I2S WS</td><td></td></tr>
   <tr><td>IO22</td><td>I2S BCLK</td><td></td></tr>
   <tr><td>IO23</td><td>I2S DATA</td><td></td></tr> 
