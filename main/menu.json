@@ -1,0 +1,94 @@
+{
+    "menu": [
+        {
+            "id": "1",
+            "name": "Keypad",
+            "type": "submenu",
+            "submenu": [
+                {"id": "1.1", "name": "LED color", "type": "select", "options": ["Red", "Green", "Blue", "White", "Black", "Yellow", "Cyan", "Magenta"]},
+                {"id": "1.2", "name": "Preset", "type": "select", "options": ["Gaming", "Office","CAD","Custom 1","Custom 2","Custom 3"]},
+                {"id": "1.3", "name": "Custom 1", "type": "submenu", "submenu": [
+                    {"id": "1.3.1", "name": "Button 1", "type": "select", "options": ["Media Play/Pause", "Media Next", "Media Previous"]},
+                    {"id": "1.3.2", "name": "Button 2", "type": "select", "options": ["Media Play/Pause", "Media Next", "Media Previous"]},
+                    {"id": "1.3.3", "name": "Button 3", "type": "select", "options": ["Media Play/Pause", "Media Next", "Media Previous"]},
+                    {"id": "1.3.4", "name": "Button 4", "type": "select", "options": ["Media Play/Pause", "Media Next", "Media Previous"]},
+                    {"id": "1.3.5", "name": "Button 5", "type": "select", "options": ["Media Play/Pause", "Media Next", "Media Previous"]},
+                    {"id": "1.3.6", "name": "Button 6", "type": "select", "options": ["Media Play/Pause", "Media Next", "Media Previous"]},
+                    {"id": "1.3.7", "name": "Button 7", "type": "select", "options": ["Media Play/Pause", "Media Next", "Media Previous"]},
+                    {"id": "1.3.8", "name": "Button 8", "type": "select", "options": ["Media Play/Pause", "Media Next", "Media Previous"]}
+                ]},
+                {"id": "1.4", "name": "Custom 2", "type": "submenu", "submenu": [
+                    {"id": "1.4.1", "name": "Button 1", "type": "select", "options": ["Media Play/Pause", "Media Next", "Media Previous"]},
+                    {"id": "1.4.2", "name": "Button 2", "type": "select", "options": ["Media Play/Pause", "Media Next", "Media Previous"]},
+                    {"id": "1.4.3", "name": "Button 3", "type": "select", "options": ["Media Play/Pause", "Media Next", "Media Previous"]},
+                    {"id": "1.4.4", "name": "Button 4", "type": "select", "options": ["Media Play/Pause", "Media Next", "Media Previous"]},
+                    {"id": "1.4.5", "name": "Button 5", "type": "select", "options": ["Media Play/Pause", "Media Next", "Media Previous"]},
+                    {"id": "1.4.6", "name": "Button 6", "type": "select", "options": ["Media Play/Pause", "Media Next", "Media Previous"]},
+                    {"id": "1.4.7", "name": "Button 7", "type": "select", "options": ["Media Play/Pause", "Media Next", "Media Previous"]},
+                    {"id": "1.4.8", "name": "Button 8", "type": "select", "options": ["Media Play/Pause", "Media Next", "Media Previous"]}
+                ]},
+                {"id": "1.5", "name": "Custom 3", "type": "submenu", "submenu": [
+                    {"id": "1.5.1", "name": "Button 1", "type": "select", "options": ["Media Play/Pause", "Media Next", "Media Previous"]},
+                    {"id": "1.5.2", "name": "Button 2", "type": "select", "options": ["Media Play/Pause", "Media Next", "Media Previous"]},
+                    {"id": "1.5.3", "name": "Button 3", "type": "select", "options": ["Media Play/Pause", "Media Next", "Media Previous"]},
+                    {"id": "1.5.4", "name": "Button 4", "type": "select", "options": ["Media Play/Pause", "Media Next", "Media Previous"]},
+                    {"id": "1.5.5", "name": "Button 5", "type": "select", "options": ["Media Play/Pause", "Media Next", "Media Previous"]},
+                    {"id": "1.5.6", "name": "Button 6", "type": "select", "options": ["Media Play/Pause", "Media Next", "Media Previous"]},
+                    {"id": "1.5.7", "name": "Button 7", "type": "select", "options": ["Media Play/Pause", "Media Next", "Media Previous"]},
+                    {"id": "1.5.8", "name": "Button 8", "type": "select", "options": ["Media Play/Pause", "Media Next", "Media Previous"]}
+                ]}
+            ]
+        },
+        {
+            "id": "2",
+            "name": "Bluetooth",
+            "type": "submenu",
+            "submenu": [
+                {"id": "2.1", "name": "Turn on/off", "type": "select", "options": ["Off", "On"]},
+                {"id": "2.2", "name": "Advertise", "type": "action"},
+                {"id": "2.3", "name": "Set name", "type": "input"}
+            ]
+        },
+        {
+            "id": "3",
+            "name": "WiFi",
+            "type": "submenu",
+            "submenu": [
+                {"id": "2.1", "name": "Turn on/off", "type": "select", "options": ["Off", "On"]},
+                {"id": "3.2", "name": "WiFi Mode", "type": "select", "options": ["AP", "Client"]},
+                {"id": "3.3", "name": "WiFi SSID", "type": "input"},
+                {"id": "3.4", "name": "WiFi Password", "type": "input"},
+                {"id": "3.5", "name": "Connect", "type": "action"},
+                {"id": "3.6", "name": "Show conn info", "type": "action"}
+            ]
+        },
+        {
+            "id": "4",
+            "name": "Display",
+            "type": "submenu",
+            "submenu": [
+                {"id": "4.1", "name": "Brightness", "type": "select", "options": ["Low", "Medium", "High"]},
+                {"id": "4.2", "name": "Color", "type": "select", "options": ["Red", "Green", "Blue", "White", "Black", "Yellow", "Cyan", "Magenta"]},
+                {"id": "4.3", "name": "Text color", "type": "select", "options": ["Red", "Green", "Blue", "White", "Black", "Yellow", "Cyan", "Magenta"]},
+                {"id": "4.4", "name": "BG Color", "type": "select", "options": ["Red", "Green", "Blue", "White", "Black", "Yellow", "Cyan", "Magenta"]}
+            ]
+        },
+        {
+            "id": "5",
+            "name": "System",
+            "type": "submenu",
+            "submenu": [
+                {"id": "5.1", "name": "Sleep timeout", "type": "select", "options": ["15s", "30s", "1m", "2m", "3m"]},
+                {"id": "5.2", "name": "Battery select", "type": "select", "options": ["ICR18650-26J", "C112VTE16P", "Custom"]},
+                {"id": "5.3", "name": "Battery mAh", "type": "input"},
+                {"id": "5.4", "name": "Update", "type": "action"},
+                {"id": "5.5", "name": "Battery info", "type": "submenu", "submenu": [
+                    {"id": "5.5.1", "name": "Voltage", "type": "info", "function": "bq27441Voltage", "unit": "mV"},
+                    {"id": "5.5.2", "name": "Current", "type": "info", "function": "bq27441Current", "unit": "mA"},
+                    {"id": "5.5.3", "name": "Percentage", "type": "info", "function": "bq27441soc", "unit": "%"},
+                    {"id": "5.5.4", "name": "Temperature", "type": "info", "function": "bq27441Temperature", "unit": "°C"}
+                ]}
+            ]
+        }
+    ]
+}

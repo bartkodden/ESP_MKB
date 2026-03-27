@@ -1,0 +1,27 @@
+[submodule "components/Adafruit_NeoPixel"]
+	path = components/Adafruit_NeoPixel
+	url = https://github.com/adafruit/Adafruit_NeoPixel
+[submodule "components/Adafruit_TCA8418"]
+	path = components/Adafruit_TCA8418
+	url = https://github.com/adafruit/Adafruit_TCA8418
+[submodule "components/AsyncTCP"]
+	path = components/AsyncTCP
+	url = https://github.com/me-no-dev/AsyncTCP
+[submodule "components/encoder"]
+	path = components/encoder
+	url = https://github.com/UncleRus/esp-idf-lib
+[submodule "components/esp-idf-bq27441"]
+	path = components/esp-idf-bq27441
+	url = https://github.com/sparkfun/SparkFun_BQ27441_Arduino_Library
+[submodule "components/esp-nimble-cpp-2.0.0"]
+	path = components/esp-nimble-cpp-2.0.0
+	url = https://github.com/h2zero/esp-nimble-cpp
+[submodule "components/ESPAsyncWebServer"]
+	path = components/ESPAsyncWebServer
+	url = https://github.com/me-no-dev/ESPAsyncWebServer
+[submodule "components/led_strip"]
+	path = components/led_strip
+	url = https://github.com/espressif/idf-extra-components
+[submodule "components/TFT_eSPI"]
+	path = components/TFT_eSPI
+	url = https://github.com/Bodmer/TFT_eSPI

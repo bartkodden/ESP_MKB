@@ -1,0 +1,10 @@
+build/
+sdkconfig.old
+partitions.csv_old
+managed_components/
+mkb main backup/
+companion_apps/windows_mcs_server/bin/
+companion_apps/windows_mcs_server/obj/
+old_code/
+.vscode/
+partition_table/

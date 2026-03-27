@@ -1,0 +1,29 @@
+{
+  "files": [
+    "actions.h",
+    "button_labels.cpp",
+    "button_labels.h",
+    "fonts.h",
+    "images.c",
+    "images.h",
+    "screens.c",
+    "screens.h",
+    "structs.h",
+    "styles.c",
+    "styles.h",
+    "ui.c",
+    "ui.h",
+    "ui_esp32.cpp",
+    "ui_image_album.c",
+    "ui_image_bt_off.c",
+    "ui_image_bt_on.c",
+    "ui_image_charging_black.c",
+    "ui_image_charging_white.c",
+    "ui_image_noart.c",
+    "ui_image_pcb.c",
+    "ui_image_wifi_off.c",
+    "ui_image_wifi_on.c",
+    "vars.cpp",
+    "vars.h"
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "buttons": [
+    {
+      "set_name": "Media Control",
+      "set_icon": "img/music_note.png",
+      "content": [
+        { "key_id": "a", "icon": "img/play_pause.png",     "name": "Play/Pause",   "cmd": 205 },
+        { "key_id": "b", "icon": "img/stop.png",           "name": "Stop",         "cmd": 183 },
+        { "key_id": "c", "icon": "img/no_sound.png",       "name": "Mute",         "cmd": 226 },
+        { "key_id": "d", "icon": "img/volume_down.png",    "name": "Vol Down",     "cmd": 234 },
+        { "key_id": "e", "icon": "img/skip_previous.png",  "name": "Previous",     "cmd": 182 },
+        { "key_id": "f", "icon": "img/skip_next.png",      "name": "Next",         "cmd": 181 },
+        { "key_id": "g", "icon": "img/volume_up.png",      "name": "Vol Up",       "cmd": 233 },
+        { "key_id": "h", "icon": "img/music_note.png",     "name": "Media App",    "cmd": 387 }
+      ]
+    },
+    {
+      "set_name": "Typing Shortcuts",
+      "set_icon": "img/empty.png",
+      "content": [
+        { "key_id": "a", "icon": "img/empty.png", "name": "Letter A",   "cmd": 4 },
+        { "key_id": "b", "icon": "img/empty.png", "name": "Letter L",   "cmd": 15 },
+        { "key_id": "c", "icon": "img/empty.png", "name": "Enter",      "cmd": 40 },
+        { "key_id": "d", "icon": "img/empty.png", "name": "Escape",     "cmd": 41 },
+        { "key_id": "e", "icon": "img/empty.png", "name": "Backspace",  "cmd": 42 },
+        { "key_id": "f", "icon": "img/empty.png", "name": "Space",      "cmd": 44 },
+        { "key_id": "g", "icon": "img/empty.png", "name": "Tab",        "cmd": 43 },
+        { "key_id": "h", "icon": "img/empty.png", "name": "Number 1",   "cmd": 30 }
+      ]
+    },
+    {
+      "set_name": "Browser Control",
+      "set_icon": "img/empty.png",
+      "content": [
+        { "key_id": "a", "icon": "img/empty.png", "name": "Home",        "cmd": 547 },
+        { "key_id": "b", "icon": "img/empty.png", "name": "Back",        "cmd": 548 },
+        { "key_id": "c", "icon": "img/empty.png", "name": "Forward",     "cmd": 549 },
+        { "key_id": "d", "icon": "img/empty.png", "name": "Refresh",     "cmd": 551 },
+        { "key_id": "e", "icon": "img/empty.png", "name": "Search",      "cmd": 545 },
+        { "key_id": "f", "icon": "img/empty.png", "name": "Bookmarks",   "cmd": 554 },
+        { "key_id": "g", "icon": "img/empty.png", "name": "Email",       "cmd": 394 },
+        { "key_id": "h", "icon": "img/empty.png", "name": "Calculator",  "cmd": 402 }
+      ]
+    },
+    {
+      "set_name": "Function Keys",
+      "set_icon": "img/empty.png",
+      "content": [
+        { "key_id": "a", "icon": "img/empty.png", "name": "F1 Key",           "cmd": 58 },
+        { "key_id": "b", "icon": "img/empty.png", "name": "F2 Key",           "cmd": 59 },
+        { "key_id": "c", "icon": "img/empty.png", "name": "F5 Refresh",       "cmd": 62 },
+        { "key_id": "d", "icon": "img/empty.png", "name": "F11 Fullscreen",   "cmd": 68 },
+        { "key_id": "e", "icon": "img/empty.png", "name": "F12 DevTools",     "cmd": 69 },
+        { "key_id": "f", "icon": "img/empty.png", "name": "Pause Key",        "cmd": 72 },
+        { "key_id": "g", "icon": "img/empty.png", "name": "Print Screen",     "cmd": 70 },
+        { "key_id": "h", "icon": "img/empty.png", "name": "Scroll Lock",      "cmd": 71 }
+      ]
+    },
+    {
+      "set_name": "SolidWorks",
+      "set_icon": "img/empty.png",
+      "content": [
+        { "key_id": "a", "icon": "img/empty.png", "name": "Save (Ctrl+S)",    "cmd": 16 },
+        { "key_id": "b", "icon": "img/empty.png", "name": "Open",             "cmd": 18 },
+        { "key_id": "c", "icon": "img/measuring_tape.png", "name": "Rotate View",     "cmd": 15 },
+        { "key_id": "d", "icon": "img/line_start_circle.png", "name": "Box Select", "cmd": 5 },
+        { "key_id": "e", "icon": "img/empty.png", "name": "Up Arrow",         "cmd": 82 },
+        { "key_id": "f", "icon": "img/empty.png", "name": "Down Arrow",       "cmd": 81 },
+        { "key_id": "g", "icon": "img/empty.png", "name": "Left Arrow",       "cmd": 80 },
+        { "key_id": "h", "icon": "img/empty.png", "name": "Right Arrow",      "cmd": 79 }
+      ]
+    },
+    {
+      "set_name": "Gaming",
+      "set_icon": "img/empty.png",
+      "content": [
+        { "key_id": "a", "icon": "img/empty.png", "name": "Forward (W)",  "cmd": 26 },
+        { "key_id": "b", "icon": "img/empty.png", "name": "Left (A)",     "cmd": 4 },
+        { "key_id": "c", "icon": "img/empty.png", "name": "Back (S)",     "cmd": 22 },
+        { "key_id": "d", "icon": "img/empty.png", "name": "Right (D)",    "cmd": 7 },
+        { "key_id": "e", "icon": "img/empty.png", "name": "Jump (Space)", "cmd": 44 },
+        { "key_id": "f", "icon": "img/empty.png", "name": "Sprint (Shift)","cmd": 225 },
+        { "key_id": "g", "icon": "img/empty.png", "name": "Use (E)",      "cmd": 8 },
+        { "key_id": "h", "icon": "img/empty.png", "name": "Reload (R)",   "cmd": 21 }
+      ]
+    }
+  ]
+}
