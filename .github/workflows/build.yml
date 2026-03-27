@@ -130,10 +130,26 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '9.0.x'  # Adjust to your version (6.0.x, 7.0.x, 8.0.x)
+        dotnet-version: '9.0.x'
+    
+    - name: Install Windows SDK 10.0.19041.0
+      shell: pwsh
+      run: |
+        Write-Host "Installing Windows 10 SDK 10.0.19041..."
+        choco install windows-sdk-10.0 --version=10.0.19041.0 --no-progress -y
     
     - name: Display .NET Info
       run: dotnet --info
+    
+    - name: List Available Windows SDKs
+      shell: pwsh
+      run: |
+        Write-Host "Checking installed Windows SDKs..."
+        if (Test-Path "C:\Program Files (x86)\Windows Kits\10\Platforms\UAP") {
+          Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\Platforms\UAP"
+        } else {
+          Write-Host "UAP folder not found"
+        }
     
     - name: Restore Dependencies
       working-directory: app/win
