@@ -45,8 +45,8 @@ idf_component_register(
         bt
         nvs_flash
         led_strip
-        esp-idf-bq27441
-        Adafruit_TCA8418
+        esp32-bq27441
+        esp32-TCA8418
         TFT_eSPI
         esp_adc
         espressif__arduino-esp32
