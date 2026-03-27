@@ -7,7 +7,7 @@ set(EXTRA_COMPONENT_DIRS
 )
 
 # Apply patches (will be executed before project())
-#include(${CMAKE_CURRENT_SOURCE_DIR}/patches.cmake)
+include(${CMAKE_CURRENT_SOURCE_DIR}/patches.cmake)
 
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(ESP_MKB)
