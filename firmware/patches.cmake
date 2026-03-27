@@ -7,7 +7,10 @@ set(ESP_INSIGHTS_CMAKE "${CMAKE_CURRENT_SOURCE_DIR}/managed_components/espressif
 set(ESP_RAINMAKER_CMAKE "${CMAKE_CURRENT_SOURCE_DIR}/managed_components/espressif__esp_rainmaker/CMakeLists.txt")
 
 # Arduino I2C patch
+set(ARDUINO_I2C_FILE "${CMAKE_CURRENT_SOURCE_DIR}/managed_components/espressif__arduino-esp32/cores/esp32/esp32-hal-i2c-slave.c")
+
 if(EXISTS "${ARDUINO_I2C_FILE}")
+    message(STATUS "Found Arduino I2C file: ${ARDUINO_I2C_FILE}")
     file(READ "${ARDUINO_I2C_FILE}" I2C_CONTENT)
     string(FIND "${I2C_CONTENT}" "Function doesn't exist in ESP-IDF 5.4.1" I2C_PATCH_FOUND)
     
@@ -27,6 +30,9 @@ if(EXISTS "${ARDUINO_I2C_FILE}")
     else()
         message(STATUS "✅ Arduino I2C already patched")
     endif()
+else()
+    message(WARNING "❌ Arduino I2C file not found: ${ARDUINO_I2C_FILE}")
+    message(WARNING "Managed components may not be downloaded yet!")
 endif()
 
 # TFT_eSPI Arduino patch

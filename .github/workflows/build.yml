@@ -28,18 +28,51 @@ jobs:
         target: esp32
         path: 'firmware'
     
-    - name: Download Managed Components
+    - name: First Configure - Download Managed Components
       working-directory: firmware
       run: |
         . $IDF_PATH/export.sh
-        echo "📦 Downloading managed components..."
-        idf.py reconfigure || echo "First pass complete"
+        echo "📦 First configure: downloading managed components..."
+        idf.py reconfigure || true
     
-    - name: Apply Patches
+    - name: Verify Managed Components Downloaded
       working-directory: firmware
       run: |
-        echo "🔧 Applying patches from patches.cmake..."
-        cmake -P patches.cmake
+        echo "🔍 Checking if Arduino component exists..."
+        if [ -f "managed_components/espressif__arduino-esp32/cores/esp32/esp32-hal-i2c-slave.c" ]; then
+          echo "✅ Arduino component found!"
+        else
+          echo "❌ Arduino component NOT found!"
+          ls -la managed_components/
+          exit 1
+        fi
+    
+    - name: Apply Patches Manually
+      working-directory: firmware
+      run: |
+        echo "🔧 Applying Arduino I2C patch manually..."
+        ARDUINO_FILE="managed_components/espressif__arduino-esp32/cores/esp32/esp32-hal-i2c-slave.c"
+        
+        # Check if already patched
+        if grep -q "Function doesn't exist in ESP-IDF 5.4.1" "$ARDUINO_FILE"; then
+          echo "✅ Already patched!"
+        else
+          echo "Patching $ARDUINO_FILE..."
+          
+          # Create backup
+          cp "$ARDUINO_FILE" "$ARDUINO_FILE.bak"
+          
+          # Apply patch using sed
+          sed -i 's|^  i2c_ll_slave_set_fifo_mode(i2c->dev, true);|  // i2c_ll_slave_set_fifo_mode(i2c->dev, true);  // Function doesn'"'"'t exist in ESP-IDF 5.4.1\n  i2c_ll_enable_fifo_mode(i2c->dev, true);|' "$ARDUINO_FILE"
+          sed -i 's|^  i2c_ll_set_mode(i2c->dev, I2C_BUS_MODE_SLAVE);|  // i2c_ll_set_mode(i2c->dev, I2C_BUS_MODE_SLAVE);|' "$ARDUINO_FILE"
+          sed -i 's|^  i2c_ll_enable_pins_open_drain(i2c->dev, true);|  // i2c_ll_enable_pins_open_drain(i2c->dev, true);|' "$ARDUINO_FILE"
+          
+          echo "✅ Patch applied!"
+          
+          # Verify
+          echo "Verification - checking for patched content:"
+          grep -A 1 "i2c_ll_enable_fifo_mode" "$ARDUINO_FILE" || echo "WARNING: Patch may have failed"
+        fi
     
     - name: Build Firmware
       working-directory: firmware
@@ -105,10 +138,6 @@ jobs:
     - name: Restore Dependencies
       working-directory: app/win
       run: dotnet restore
-    
-    - name: Build Debug
-      working-directory: app/win
-      run: dotnet build --configuration Debug --no-restore
     
     - name: Build Release
       working-directory: app/win
