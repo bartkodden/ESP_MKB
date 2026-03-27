@@ -28,36 +28,18 @@ jobs:
         target: esp32
         path: 'firmware'
     
-    - name: First Pass - Download Managed Components
+    - name: Download Managed Components
       working-directory: firmware
       run: |
         . $IDF_PATH/export.sh
-        echo "📦 Pass 1: Downloading managed components..."
-        idf.py reconfigure || echo "⚠️ First pass completed (errors expected)"
+        echo "📦 Downloading managed components..."
+        idf.py reconfigure || echo "First pass complete"
     
-    - name: Clean Build Directory
+    - name: Apply Patches
       working-directory: firmware
       run: |
-        echo "🧹 Cleaning build cache to force patch application..."
-        rm -rf build/CMakeCache.txt
-        rm -rf build/CMakeFiles
-    
-    - name: Second Pass - Apply Patches & Configure
-      working-directory: firmware
-      run: |
-        . $IDF_PATH/export.sh
-        echo "🔧 Pass 2: Applying patches and reconfiguring..."
-        idf.py reconfigure
-    
-    - name: Verify Patches Applied
-      working-directory: firmware
-      run: |
-        echo "🔍 Checking if Arduino I2C patch was applied..."
-        if grep -q "Function doesn't exist in ESP-IDF 5.4.1" managed_components/espressif__arduino-esp32/cores/esp32/esp32-hal-i2c-slave.c; then
-          echo "✅ Arduino I2C patch verified!"
-        else
-          echo "❌ Patch may not have been applied, but continuing..."
-        fi
+        echo "🔧 Applying patches from patches.cmake..."
+        cmake -P patches.cmake
     
     - name: Build Firmware
       working-directory: firmware
@@ -115,7 +97,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '10.0.x'  # Adjust to your version (6.0.x, 7.0.x, 8.0.x)
+        dotnet-version: '9.0.x'  # Adjust to your version (6.0.x, 7.0.x, 8.0.x)
     
     - name: Display .NET Info
       run: dotnet --info
