@@ -127,10 +127,45 @@ jobs:
         submodules: 'recursive'
         fetch-depth: 0
     
+    - name: Install Windows SDK with UWP Components
+      shell: pwsh
+      run: |
+        Write-Host "Installing Visual Studio Build Tools with UWP workload..."
+        
+        # Download Visual Studio Build Tools installer
+        Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vs_buildtools.exe" -OutFile "$env:TEMP\vs_buildtools.exe"
+        
+        # Install with UWP workload (includes UAP platform files)
+        Start-Process -Wait -FilePath "$env:TEMP\vs_buildtools.exe" -ArgumentList `
+          "--quiet", `
+          "--wait", `
+          "--norestart", `
+          "--nocache", `
+          "--add", "Microsoft.VisualStudio.Workload.UniversalBuildTools", `
+          "--add", "Microsoft.VisualStudio.Component.Windows10SDK.19041"
+        
+        Write-Host "Installation complete!"
+    
+    - name: Verify UAP Platform Files
+      shell: pwsh
+      run: |
+        Write-Host "Checking for UAP platform files..."
+        $uapPath = "C:\Program Files (x86)\Windows Kits\10\Platforms\UAP\10.0.19041.0"
+        if (Test-Path "$uapPath\Platform.xml") {
+          Write-Host "✅ UAP Platform.xml found at $uapPath"
+        } else {
+          Write-Host "❌ UAP Platform.xml not found"
+          Write-Host "Available SDK versions:"
+          Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\Platforms\UAP" -ErrorAction SilentlyContinue
+        }
+    
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '9.0.x'
+    
+    - name: Display .NET Info
+      run: dotnet --info
     
     - name: Restore Dependencies
       working-directory: app/win
