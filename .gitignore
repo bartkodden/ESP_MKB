@@ -1,6 +1,5 @@
-build/
-
 # ESP-IDF build artifacts
+build/
 firmware/build/
 firmware/sdkconfig.old
 firmware/managed_components/
@@ -11,20 +10,8 @@ firmware/components/*/docs/
 firmware/components/*/test/
 firmware/components/*/tests/
 
-# Windows app build artifacts
-app/win/bin/
-app/win/obj/
-
-# Old/backup files
-old_code/
-mkb main backup/
-partition_table/
-partitions.csv_old
-
 # Editor
 .vscode/
-ESP-MKB.code-workspace
-*.code-workspace.user
 .DS_Store
 Thumbs.db
 
@@ -36,14 +23,3 @@ firmware/managed_components/
 # Windows app build artifacts
 app/win/bin/
 app/win/obj/
-
-# Old/backup files
-old_code/
-mkb main backup/
-partition_table/
-partitions.csv_old
-
-# Editor
-.vscode/
-*.code-workspace.user
-
