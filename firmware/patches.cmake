@@ -1,39 +1,7 @@
 # ========== PATCHES FOR ESP-IDF 5.4.1 COMPATIBILITY ==========
 message(STATUS "🔧 Applying component patches...")
 
-set(ARDUINO_I2C_FILE "${CMAKE_CURRENT_SOURCE_DIR}/managed_components/espressif__arduino-esp32/cores/esp32/esp32-hal-i2c-slave.c")
 set(TFT_ESPI_CMAKE "${CMAKE_CURRENT_SOURCE_DIR}/components/TFT_eSPI/CMakeLists.txt")
-set(ESP_INSIGHTS_CMAKE "${CMAKE_CURRENT_SOURCE_DIR}/managed_components/espressif__esp_insights/CMakeLists.txt")
-set(ESP_RAINMAKER_CMAKE "${CMAKE_CURRENT_SOURCE_DIR}/managed_components/espressif__esp_rainmaker/CMakeLists.txt")
-
-# Arduino I2C patch
-set(ARDUINO_I2C_FILE "${CMAKE_CURRENT_SOURCE_DIR}/managed_components/espressif__arduino-esp32/cores/esp32/esp32-hal-i2c-slave.c")
-
-if(EXISTS "${ARDUINO_I2C_FILE}")
-    message(STATUS "Found Arduino I2C file: ${ARDUINO_I2C_FILE}")
-    file(READ "${ARDUINO_I2C_FILE}" I2C_CONTENT)
-    string(FIND "${I2C_CONTENT}" "Function doesn't exist in ESP-IDF 5.4.1" I2C_PATCH_FOUND)
-    
-    if(I2C_PATCH_FOUND EQUAL -1)
-        message(STATUS "Applying Arduino I2C patch...")
-        string(REPLACE "i2c_ll_slave_set_fifo_mode(i2c->dev, true);" 
-                      "// i2c_ll_slave_set_fifo_mode(i2c->dev, true);  // Function doesn't exist in ESP-IDF 5.4.1\n  i2c_ll_enable_fifo_mode(i2c->dev, true);" 
-                      I2C_CONTENT "${I2C_CONTENT}")
-        string(REPLACE "i2c_ll_set_mode(i2c->dev, I2C_BUS_MODE_SLAVE);" 
-                      "// i2c_ll_set_mode(i2c->dev, I2C_BUS_MODE_SLAVE);" 
-                      I2C_CONTENT "${I2C_CONTENT}")
-        string(REPLACE "i2c_ll_enable_pins_open_drain(i2c->dev, true);" 
-                      "// i2c_ll_enable_pins_open_drain(i2c->dev, true);" 
-                      I2C_CONTENT "${I2C_CONTENT}")
-        file(WRITE "${ARDUINO_I2C_FILE}" "${I2C_CONTENT}")
-        message(STATUS "✅ Arduino I2C patched!")
-    else()
-        message(STATUS "✅ Arduino I2C already patched")
-    endif()
-else()
-    message(WARNING "❌ Arduino I2C file not found: ${ARDUINO_I2C_FILE}")
-    message(WARNING "Managed components may not be downloaded yet!")
-endif()
 
 # TFT_eSPI Arduino patch
 if(EXISTS "${TFT_ESPI_CMAKE}")
@@ -102,40 +70,6 @@ if(EXISTS "${BUSIO_CMAKE}")
         message(STATUS "✅ Adafruit_BusIO patched!")
     else()
         message(STATUS "✅ Adafruit_BusIO already patched")
-    endif()
-endif()
-
-# ESP Insights git patch
-if(EXISTS "${ESP_INSIGHTS_CMAKE}")
-    file(READ "${ESP_INSIGHTS_CMAKE}" INSIGHTS_CONTENT)
-    string(FIND "${INSIGHTS_CONTENT}" "set(ESP_INSIGHTS_VERSION \"unknown\")" INSIGHTS_PATCH_FOUND)
-    
-    if(INSIGHTS_PATCH_FOUND EQUAL -1)
-        message(STATUS "Applying ESP Insights git patch...")
-        string(REPLACE "git_describe(ESP_INSIGHTS_VERSION \${COMPONENT_DIR})" 
-                      "set(ESP_INSIGHTS_VERSION \"unknown\")" 
-                      INSIGHTS_CONTENT "${INSIGHTS_CONTENT}")
-        file(WRITE "${ESP_INSIGHTS_CMAKE}" "${INSIGHTS_CONTENT}")
-        message(STATUS "✅ ESP Insights patched!")
-    else()
-        message(STATUS "✅ ESP Insights already patched")
-    endif()
-endif()
-
-# ESP RainMaker git patch
-if(EXISTS "${ESP_RAINMAKER_CMAKE}")
-    file(READ "${ESP_RAINMAKER_CMAKE}" RAINMAKER_CONTENT)
-    string(FIND "${RAINMAKER_CONTENT}" "set(RMAKER_VERSION \"unknown\")" RAINMAKER_PATCH_FOUND)
-    
-    if(RAINMAKER_PATCH_FOUND EQUAL -1)
-        message(STATUS "Applying ESP RainMaker git patch...")
-        string(REPLACE "git_describe(RMAKER_VERSION \${COMPONENT_DIR})" 
-                      "set(RMAKER_VERSION \"unknown\")" 
-                      RAINMAKER_CONTENT "${RAINMAKER_CONTENT}")
-        file(WRITE "${ESP_RAINMAKER_CMAKE}" "${RAINMAKER_CONTENT}")
-        message(STATUS "✅ ESP RainMaker patched!")
-    else()
-        message(STATUS "✅ ESP RainMaker already patched")
     endif()
 endif()
 

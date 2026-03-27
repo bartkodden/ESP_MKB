@@ -1,6 +1,7 @@
 # ESP-IDF build artifacts
 build/
 firmware/build/
+firmware/patches.cmake_old
 firmware/sdkconfig.old
 firmware/managed_components/
 
