@@ -1,4 +1,4 @@
-#include "menufunctions.h"
+#include "menuFunctions.h"
 
 /*
 Menu Structure:
