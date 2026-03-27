@@ -1,10 +1,49 @@
 build/
-sdkconfig.old
-partitions.csv_old
-managed_components/
-mkb main backup/
-companion_apps/windows_mcs_server/bin/
-companion_apps/windows_mcs_server/obj/
+
+# ESP-IDF build artifacts
+firmware/build/
+firmware/sdkconfig.old
+firmware/managed_components/
+
+# Exclude examples from submodulesC
+firmware/components/*/examples/
+firmware/components/*/docs/
+firmware/components/*/test/
+firmware/components/*/tests/
+
+# Windows app build artifacts
+app/win/bin/
+app/win/obj/
+
+# Old/backup files
 old_code/
-.vscode/
+mkb main backup/
 partition_table/
+partitions.csv_old
+
+# Editor
+.vscode/
+ESP-MKB.code-workspace
+*.code-workspace.user
+.DS_Store
+Thumbs.db
+
+# ESP-IDF build artifacts
+firmware/build/
+firmware/sdkconfig.old
+firmware/managed_components/
+
+# Windows app build artifacts
+app/win/bin/
+app/win/obj/
+
+# Old/backup files
+old_code/
+mkb main backup/
+partition_table/
+partitions.csv_old
+
+# Editor
+.vscode/
+*.code-workspace.user
+
