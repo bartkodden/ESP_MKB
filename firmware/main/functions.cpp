@@ -1,8 +1,8 @@
 #include "functions.h"
-#include "bluetoothfunctions.h"
+#include "bluetoothFunctions.h"
 #include "fileFunctions.h"
 #include "menuFunctions.h"
-#include "setupfunctions.h"
+#include "setupFunctions.h"
 #include <esp_sleep.h>
 #include "ui/screens.h"
 #include "ui/vars.h"
