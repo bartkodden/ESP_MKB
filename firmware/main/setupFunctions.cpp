@@ -1,6 +1,6 @@
-#include "setupfunctions.h"
+#include "setupFunctions.h"
 #include "ble_config.h"
-#include "bluetoothfunctions.h"
+#include "bluetoothFunctions.h"
 #include "fileFunctions.h"
 #include "menuFunctions.h"
 #include "esp_pm.h"
