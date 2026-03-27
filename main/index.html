@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ESP32 File Manager</title>
+</head>
+<body>
+    <h1>ESP32 File Manager</h1>
+    <h2>Download Files</h2>
+    <ul>
+        <li><a href="/download/menu.json" download>Download menu.json</a></li>
+        <li><a href="/download/buttons.json" download>Download buttons.json</a></li>
+    </ul>
+    <h2>Upload Files</h2>
+    <form method="POST" action="/upload" enctype="multipart/form-data">
+        <input type="file" name="file">
+        <input type="submit" value="Upload">
+    </form>
+</body>
+</html>
