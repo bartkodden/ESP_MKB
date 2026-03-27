@@ -1,4 +1,4 @@
-#include "bluetoothfunctions.h"
+#include "bluetoothFunctions.h"
 #include "mcs_client.h"
 #include "ui/vars.h"
 #include "ui/ui.h"
