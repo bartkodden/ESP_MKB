@@ -42,7 +42,9 @@ jobs:
         target: esp32
         path: 'firmware'
     
-    # ← REMOVED "Build Firmware" step - the action above already built it!
+    - name: Fix Build Directory Permissions
+      run: |
+        sudo chown -R runner:docker firmware/build
     
     - name: Generate Build Info
       working-directory: firmware/build
