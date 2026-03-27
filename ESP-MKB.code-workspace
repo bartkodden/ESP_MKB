@@ -1,0 +1,47 @@
+{
+    "folders": [
+        {
+            "name": "ESP-MKB Firmware",
+            "path": "firmware"
+        },
+        {
+            "name": "Windows App",
+            "path": "app/win"
+        },
+        {
+            "name": "ESP-MKB",
+            "path": "."
+        }
+    ],
+    "settings": {
+        // ESP-IDF Settings
+        "idf.projectDirectoryPath": "${workspaceFolder: ESP32 Firmware}",
+        
+        // C# Settings for Windows App
+        "dotnet.defaultSolution": "${workspaceFolder: Windows App}",
+        
+        // File exclusions for performance
+        "files.exclude": {
+            "**/build": true,
+            "**/bin": true,
+            "**/obj": true,
+            "**/.vscode": false
+        },
+        
+        // Search exclusions
+        "search.exclude": {
+            "**/build": true,
+            "**/bin": true,
+            "**/obj": true,
+            "**/managed_components": true
+        }
+    },
+    "extensions": {
+        "recommendations": [
+            "espressif.esp-idf-extension",
+            "ms-vscode.cpptools",
+            "ms-dotnettools.csharp",
+            "ms-dotnettools.csdevkit"
+        ]
+    }
+}
