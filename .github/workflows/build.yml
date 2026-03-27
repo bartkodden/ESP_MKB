@@ -11,9 +11,6 @@ jobs:
   # ============================================
   # ESP32 Firmware Build
   # ============================================
-  # ============================================
-  # ESP32 Firmware Build
-  # ============================================
   build-firmware:
     runs-on: ubuntu-latest
     
@@ -41,68 +38,10 @@ jobs:
     - name: Setup ESP-IDF
       uses: espressif/esp-idf-ci-action@v1
       with:
-        esp_idf_version: v5.4.1
+        esp_idf_version: v5.4.3
         target: esp32
         path: 'firmware'
-    
-    - name: Download Managed Components (First Pass)
-      working-directory: firmware
-      run: |
-        . $IDF_PATH/export.sh
-        echo "📦 Downloading managed components..."
-        idf.py reconfigure || echo "⚠️ First pass completed (errors expected)"
-    
-    - name: Verify Arduino Component Downloaded
-      working-directory: firmware
-      run: |
-        echo "🔍 Checking if Arduino I2C file exists..."
-        ARDUINO_FILE="managed_components/espressif__arduino-esp32/cores/esp32/esp32-hal-i2c-slave.c"
-        if [ -f "$ARDUINO_FILE" ]; then
-          echo "✅ Arduino component found!"
-          ls -la managed_components/espressif__arduino-esp32/cores/esp32/esp32-hal-i2c*.c
-        else
-          echo "❌ Arduino component NOT found!"
-          ls -la managed_components/ || true
-          exit 1
-        fi
-    
-    - name: Apply Arduino I2C Patch Manually
-      working-directory: firmware
-      shell: bash
-      run: |
-        echo "🔧 Applying Arduino I2C slave patch..."
-        ARDUINO_FILE="managed_components/espressif__arduino-esp32/cores/esp32/esp32-hal-i2c-slave.c"
-        
-        # Check if already patched
-        if grep -q "Function doesn't exist in ESP-IDF 5.4.1" "$ARDUINO_FILE"; then
-          echo "✅ Already patched!"
-          exit 0
-        fi
-        
-        echo "Applying patch..."
-        
-        # Create backup
-        cp "$ARDUINO_FILE" "$ARDUINO_FILE.backup"
-        
-        # Apply patches using sed
-        sed -i 's|^  i2c_ll_slave_set_fifo_mode(i2c->dev, true);|  // i2c_ll_slave_set_fifo_mode(i2c->dev, true);  // Function doesn'\''t exist in ESP-IDF 5.4.1\n  i2c_ll_enable_fifo_mode(i2c->dev, true);|' "$ARDUINO_FILE"
-        sed -i 's|^  i2c_ll_set_mode(i2c->dev, I2C_BUS_MODE_SLAVE);|  // i2c_ll_set_mode(i2c->dev, I2C_BUS_MODE_SLAVE);|' "$ARDUINO_FILE"
-        sed -i 's|^  i2c_ll_enable_pins_open_drain(i2c->dev, true);|  // i2c_ll_enable_pins_open_drain(i2c->dev, true);|' "$ARDUINO_FILE"
-        
-        echo "✅ Patch applied!"
-        
-        # Verify patch
-        echo ""
-        echo "Verification - showing patched lines:"
-        grep -A 1 "i2c_ll_enable_fifo_mode" "$ARDUINO_FILE" || echo "⚠️ Patch verification failed"
-    
-    - name: Clean Build Cache
-      working-directory: firmware
-      run: |
-        echo "🧹 Cleaning build cache..."
-        rm -rf build/CMakeCache.txt
-        rm -rf build/CMakeFiles
-    
+
     - name: Build Firmware
       working-directory: firmware
       run: |
