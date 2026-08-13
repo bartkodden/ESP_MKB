@@ -39,7 +39,9 @@ ESP_MKB - by B Kodden
 #include "esp_bt_device.h"
 #include "esp_gatt_common_api.h"
 
-#include "icons.h"
+#include "icon_codepoints.h"
+#include "buttonUI.h"
+#include "iconManager.h"
 #include "ui/ui.h"
 #include "ui/screens.h"
 #include "ui/vars.h"
@@ -54,30 +56,24 @@ ESP_MKB - by B Kodden
 #include "functions.h"
 #include "setupFunctions.h"
 
-#define LOADING_TASK_STACK 8192
-#define LOADING_TASK_PRIO  5
-#define LOADING_TASK_CORE  1
-
 static const char *MAIN_TAG = "ESP_MKB";
 
-static void bar_anim_cb(void *var, int32_t val) {
-    lv_bar_set_value((lv_obj_t*)var, val, LV_ANIM_OFF);
-}
-
-static volatile bool loading_ui_task_running = false;
-static TaskHandle_t loading_ui_task_handle = nullptr;
-
-static void loading_ui_task(void *param) {
-    while (loading_ui_task_running) {
-        ui_tick();
-        lv_timer_handler();
-        vTaskDelay(pdMS_TO_TICKS(5));
-    }
-    vTaskDelete(nullptr);
+// ── LVGL tick helper ──────────────────────────────────────────────────────────
+// Call between slow init steps to keep the loading screen alive.
+// Single-threaded — no race conditions with LVGL.
+static void lvgl_tick() {
+    lv_timer_handler();
+    ui_tick();
+    vTaskDelay(pdMS_TO_TICKS(5));
 }
 
 static inline void update_loading_status(const char *msg) {
     set_var_loading_status(msg);
+    lvgl_tick();    // always redraw immediately after updating the label
+}
+
+static void bar_anim_cb(void *var, int32_t val) {
+    lv_bar_set_value((lv_obj_t*)var, val, LV_ANIM_OFF);
 }
 
 static bool anim_started = false;
@@ -90,7 +86,8 @@ extern "C" {
 };
 
 static void handle_init_error(const char* component, esp_err_t err) {
-    ESP_LOGE(MAIN_TAG, "FATAL: %s initialization failed: %s", component, esp_err_to_name(err));
+    ESP_LOGE(MAIN_TAG, "FATAL: %s initialization failed: %s",
+             component, esp_err_to_name(err));
 
     tft.fillScreen(TFT_RED);
     tft.setTextColor(TFT_WHITE);
@@ -98,26 +95,14 @@ static void handle_init_error(const char* component, esp_err_t err) {
     tft.printf("INIT ERROR:\n%s\n%s", component, esp_err_to_name(err));
     vTaskDelay(pdMS_TO_TICKS(5000));
 
-    ESP_LOGE(MAIN_TAG, "Restarting in 5 seconds...");
-    vTaskDelay(pdMS_TO_TICKS(5000));
+    ESP_LOGE(MAIN_TAG, "Restarting...");
     esp_restart();
 }
 
-static void stop_loading_task() {
-    if (!loading_ui_task_running) return;
-
-    loading_ui_task_running = false;
-    if (loading_ui_task_handle) {
-        while (eTaskGetState(loading_ui_task_handle) != eDeleted) {
-            vTaskDelay(pdMS_TO_TICKS(10));
-        }
-        loading_ui_task_handle = nullptr;
-    }
-}
-
-void app_main(){
+void app_main() {
     esp_log_level_set("gpio", ESP_LOG_WARN);
 
+    // ── Bluetooth first — must be before display/LVGL init ───────────────────
     ESP_LOGI(MAIN_TAG, "=== ESP_MKB Starting ===");
     ESP_LOGI(MAIN_TAG, "Initializing Bluetooth");
     device_mode = MODE_BOTH;
@@ -127,28 +112,20 @@ void app_main(){
         vTaskDelay(pdMS_TO_TICKS(5000));
         esp_restart();
     }
+
+    // ── Display + LVGL init ───────────────────────────────────────────────────
     tft.begin();
     tft.fillScreen(TFT_BLACK);
-
     ui_init_display();
+    ui_lvgl_register_fs();
     ui_init();
 
+    // Show loading screen — from here on use update_loading_status() which
+    // calls lvgl_tick() automatically to keep the display responsive
     lv_scr_load(objects.loading);
     update_loading_status("Starting...");
 
-    loading_ui_task_running = true;
-    xTaskCreatePinnedToCore(
-        loading_ui_task,
-        "lvgl_loading",
-        LOADING_TASK_STACK,
-        nullptr,
-        LOADING_TASK_PRIO,
-        &loading_ui_task_handle,
-        LOADING_TASK_CORE
-    );
-
-    vTaskDelay(pdMS_TO_TICKS(100));
-
+    // ── GPIO ──────────────────────────────────────────────────────────────────
     update_loading_status("GPIO...");
     ESP_LOGI(MAIN_TAG, "Configuring GPIO pins");
     pinMode(SLP_IO, OUTPUT);
@@ -163,6 +140,7 @@ void app_main(){
     pinMode(SPI_BL, OUTPUT);
     resetPin(MRES);
 
+    // ── LED strip ─────────────────────────────────────────────────────────────
     update_loading_status("LED strip...");
     ESP_LOGI(MAIN_TAG, "Initializing LED strip");
     ret = setupLeds();
@@ -173,6 +151,7 @@ void app_main(){
         led_strip_refresh(led_strip);
     }
 
+    // ── Power management ──────────────────────────────────────────────────────
     update_loading_status("Power mgmt...");
     ESP_LOGI(MAIN_TAG, "Configuring power management");
     ret = setupPM();
@@ -180,6 +159,7 @@ void app_main(){
         ESP_LOGW(MAIN_TAG, "Power management failed: %s", esp_err_to_name(ret));
     }
 
+    // ── I2C ───────────────────────────────────────────────────────────────────
     update_loading_status("I2C bus...");
     ESP_LOGI(MAIN_TAG, "Initializing I2C bus");
     ret = i2c_master_init();
@@ -188,6 +168,7 @@ void app_main(){
         return;
     }
 
+    // ── ADC ───────────────────────────────────────────────────────────────────
     update_loading_status("ADC...");
     ESP_LOGI(MAIN_TAG, "Initializing ADC");
     ret = setupADC();
@@ -196,34 +177,30 @@ void app_main(){
         return;
     }
 
+    // ── Battery gauge (~600ms I2C init) ───────────────────────────────────────
     update_loading_status("Battery...");
     ESP_LOGI(MAIN_TAG, "Initializing battery gauge");
-    ret = setupBQ27441();
+    ret = setupBQ27441();           // slow — lvgl_tick() is called via update_loading_status above
     if (ret != ESP_OK) {
         ESP_LOGW(MAIN_TAG, "Battery gauge failed: %s", esp_err_to_name(ret));
     }
+    lvgl_tick();                    // extra tick after slow step
 
+    // ── Keypad ────────────────────────────────────────────────────────────────
     update_loading_status("Keypad...");
     ESP_LOGI(MAIN_TAG, "Initializing keypad");
     ret = setupTCA8418();
     if (ret != ESP_OK) {
         ESP_LOGW(MAIN_TAG, "Keypad failed: %s", esp_err_to_name(ret));
     }
+    lvgl_tick();
 
-    update_loading_status("Bluetooth...");
-    device_mode = MODE_BOTH;
-    ESP_LOGI(MAIN_TAG, "Device Mode: MCS & HID (Both)");
-    ESP_LOGI(MAIN_TAG, "Initializing Bluetooth");
-    ret = setupBluetooth();
-    if (ret != ESP_OK) {
-        handle_init_error("Bluetooth", ret);
-        return;
-    }
-
+    // ── Arduino framework ─────────────────────────────────────────────────────
     update_loading_status("Arduino...");
     ESP_LOGI(MAIN_TAG, "Initializing Arduino framework");
     initArduino();
 
+    // ── LittleFS ──────────────────────────────────────────────────────────────
     update_loading_status("File system...");
     ESP_LOGI(MAIN_TAG, "Mounting file system");
     ret = setup_littlefs();
@@ -231,11 +208,22 @@ void app_main(){
         handle_init_error("LittleFS", ret);
         return;
     }
+    lvgl_tick();
 
+    // ── Icon font (subset — fast, < 1s) ──────────────────────────────────────
+    update_loading_status("Icons...");
+    iconmanager_init();
+    lvgl_tick();
+
+    // ── Config files + button mappings ────────────────────────────────────────
     update_loading_status("Config...");
     copy_embedded_json_to_littlefs();
     loadButtonMappings();
+    lvgl_tick();
+    buttonui_refresh();             // font + data both ready now
+    lvgl_tick();
 
+    // ── Menu ──────────────────────────────────────────────────────────────────
     update_loading_status("Menu...");
     ESP_LOGI(MAIN_TAG, "Loading menu");
     ret = setupMenu();
@@ -244,7 +232,9 @@ void app_main(){
     } else {
         update_buttonset_label();
     }
+    lvgl_tick();
 
+    // ── Encoder ───────────────────────────────────────────────────────────────
     update_loading_status("Encoder...");
     ESP_LOGI(MAIN_TAG, "Initializing encoder");
     ret = setupEncoder(ENC_A, ENC_B, 0, 100, true, encTurn);
@@ -252,33 +242,36 @@ void app_main(){
         ESP_LOGW(MAIN_TAG, "Encoder failed: %s", esp_err_to_name(ret));
     }
 
+    // ── MCS client ────────────────────────────────────────────────────────────
     update_loading_status("MCS...");
     if (device_mode == MODE_MCS_ONLY || device_mode == MODE_BOTH) {
         ESP_LOGI(MAIN_TAG, "Initializing MCS client");
         mcs_client_init();
     }
 
+    // ── Ready ─────────────────────────────────────────────────────────────────
     current_volume = 50;
-    battery_level = 100;
+    battery_level  = 100;
 
     update_loading_status("Ready!");
+    lvgl_tick();
     vTaskDelay(pdMS_TO_TICKS(300));
 
     if (led_strip) {
         setPixelColor(led_strip, 10, colorsDim[GREEN]);
         led_strip_refresh(led_strip);
     }
-    tft.setTextColor(TFT_WHITE, TFT_BLACK, true);
 
+    // ── Switch to main screen ─────────────────────────────────────────────────
     ESP_LOGI(MAIN_TAG, "Switching to main screen");
     lv_scr_load(objects.main);
-
-    stop_loading_task();
+    lvgl_tick();
 
     ESP_LOGI(MAIN_TAG, "=== Initialization Complete ===");
     ESP_LOGI(MAIN_TAG, "Entering main loop");
 
-    while(1) {
+    // ── Main loop ─────────────────────────────────────────────────────────────
+    while (1) {
         lv_timer_handler();
         ui_tick();
         handle_ble_display_events();
@@ -287,14 +280,17 @@ void app_main(){
             mcs_process_ui_updates();
         }
 
+        // BLE icon
         static bool last_ble_conn = false;
         if (ble_conn != last_ble_conn) {
             last_ble_conn = ble_conn;
             if (objects.bticon) {
-                lv_image_set_src(objects.bticon, ble_conn ? &img_bt_on : &img_bt_off);
+                lv_image_set_src(objects.bticon,
+                                 ble_conn ? &img_bt_on : &img_bt_off);
             }
         }
 
+        // MCS status + track progress
         if (device_mode == MODE_BOTH) {
             uint32_t now = esp_timer_get_time() / 1000000;
 
@@ -302,19 +298,21 @@ void app_main(){
                 last_mcs_check = now;
 
                 bool mcs_connected = mcs_is_connected();
-
                 static bool last_mcs_status = false;
                 if (mcs_connected != last_mcs_status) {
                     last_mcs_status = mcs_connected;
-
                     if (mcs_connected) {
                         ESP_LOGI(MAIN_TAG, "✓ MCS connected");
-                        if (objects.mcs_nc) lv_obj_add_flag(objects.mcs_nc, LV_OBJ_FLAG_HIDDEN);
-                        if (objects.mediabox) lv_obj_remove_flag(objects.mediabox, LV_OBJ_FLAG_HIDDEN);
+                        if (objects.mcs_nc)
+                            lv_obj_add_flag(objects.mcs_nc, LV_OBJ_FLAG_HIDDEN);
+                        if (objects.mediabox)
+                            lv_obj_remove_flag(objects.mediabox, LV_OBJ_FLAG_HIDDEN);
                     } else {
                         ESP_LOGI(MAIN_TAG, "✗ MCS disconnected");
-                        if (objects.mcs_nc) lv_obj_remove_flag(objects.mcs_nc, LV_OBJ_FLAG_HIDDEN);
-                        if (objects.mediabox) lv_obj_add_flag(objects.mediabox, LV_OBJ_FLAG_HIDDEN);
+                        if (objects.mcs_nc)
+                            lv_obj_remove_flag(objects.mcs_nc, LV_OBJ_FLAG_HIDDEN);
+                        if (objects.mediabox)
+                            lv_obj_add_flag(objects.mediabox, LV_OBJ_FLAG_HIDDEN);
                     }
                 }
 
@@ -327,18 +325,15 @@ void app_main(){
 
             static uint32_t last_set_duration = 0;
             uint32_t current_duration = mcs_get_track_duration();
-
             if (current_duration != last_set_duration && current_duration > 0) {
                 last_set_duration = current_duration;
-                if (objects.trackprogress) {
+                if (objects.trackprogress)
                     lv_slider_set_range(objects.trackprogress, 0, current_duration);
-                }
             }
 
-            if (mcs_is_connected() && (now - last_progress_update) >= 1) {
-                last_progress_update = now;
+            if (mcs_is_connected() && (esp_timer_get_time() / 1000000 - last_progress_update) >= 1) {
+                last_progress_update = esp_timer_get_time() / 1000000;
                 uint32_t pos_sec = mcs_get_estimated_position();
-
                 if (objects.trackprogress && current_duration > 0) {
                     if (pos_sec > current_duration) pos_sec = current_duration;
                     lv_slider_set_value(objects.trackprogress, pos_sec, LV_ANIM_OFF);
@@ -347,10 +342,11 @@ void app_main(){
 
             static char last_fetched_track[128] = "";
             if (mcs_is_connected() && !mcs_is_album_transfer_in_progress()) {
-                const char* current_track = mcs_get_track_title();
-
-                if (strcmp(current_track, last_fetched_track) != 0 && strcmp(current_track, "No Media") != 0) {
-                    strncpy(last_fetched_track, current_track, sizeof(last_fetched_track) - 1);
+                const char *current_track = mcs_get_track_title();
+                if (strcmp(current_track, last_fetched_track) != 0 &&
+                    strcmp(current_track, "No Media") != 0) {
+                    strncpy(last_fetched_track, current_track,
+                            sizeof(last_fetched_track) - 1);
                     mcs_fetch_album_art();
                 }
             }
@@ -358,17 +354,17 @@ void app_main(){
             check_mcs_discovery();
         }
 
+        // ADC + charging
         adc_oneshot_read(adc1_handle, ADC_CHANNEL_3, &p1read);
         adc_oneshot_read(adc1_handle, ADC_CHANNEL_0, &p2read);
-        pluggedIn = digitalRead(PWR);
+        pluggedIn     = digitalRead(PWR);
         chargingState = digitalRead(CHRG);
-        doneCharging = digitalRead(DONE);
+        doneCharging  = digitalRead(DONE);
 
         static bool last_charging = false;
-        static bool last_done = true;
-
-        bool current_charging = false;
-        Color led_color = colorsDim[RED];
+        static bool last_done     = true;
+        bool current_charging     = false;
+        Color led_color           = colorsDim[RED];
 
         if (!chargingState || !doneCharging) {
             if (doneCharging == 0) {
@@ -378,18 +374,17 @@ void app_main(){
                 current_charging = true;
                 led_color = colorsDim[BLUE];
             }
-        } else {
-            current_charging = false;
-            led_color = colorsDim[RED];
         }
 
-        if (led_strip && (current_charging != last_charging || doneCharging != last_done)) {
+        if (led_strip &&
+            (current_charging != last_charging || doneCharging != last_done)) {
             charging = current_charging;
             setPixelColor(led_strip, 10, led_color);
             last_charging = current_charging;
-            last_done = doneCharging;
+            last_done     = doneCharging;
         }
 
+        // Charging animation
         if (charging) {
             if (!anim_started && objects.batpercbar) {
                 lv_anim_init(&charge_anim);
@@ -411,15 +406,15 @@ void app_main(){
             }
         }
 
+        // Battery level
         if (abs(batPerc - bq27441Soc(FILTERED)) >= 1) {
             batPerc = (uint8_t)bq27441Soc(FILTERED);
             updateBatteryLevel(batPerc);
             update_ble_battery_level(batPerc);
             set_var_batperc(batPerc);
 
-            if (!charging && objects.batpercbar) {
+            if (!charging && objects.batpercbar)
                 lv_bar_set_value(objects.batpercbar, batPerc, LV_ANIM_OFF);
-            }
 
             if (objects.batperclabel) {
                 char buf[8];
@@ -428,28 +423,25 @@ void app_main(){
             }
         }
 
+        // Potentiometers → LEDs
         if (abs(p1val - p1read) >= analogDamper) {
             p1val = p1read;
-            if (led_strip) {
-                setLEDColorRange(p1val, 11, 0, 4100, ledsDim);
-            }
+            if (led_strip) setLEDColorRange(p1val, 11, 0, 4100, ledsDim);
         }
-
         if (abs(p2val - p2read) >= analogDamper) {
             p2val = p2read;
-            if (led_strip) {
-                setLEDColorRange(p2val, 9, 0, 4100, ledsDim);
-            }
+            if (led_strip) setLEDColorRange(p2val, 9, 0, 4100, ledsDim);
         }
 
+        // Volume / mic via MCS
         if (mcs_is_connected()) {
             static uint32_t last_audio_send = 0;
-            uint32_t now = esp_timer_get_time() / 1000000;
+            uint32_t now_s = esp_timer_get_time() / 1000000;
             static uint8_t last_sent_vol = 255;
             static uint8_t last_sent_mic = 255;
 
-            if (now - last_audio_send >= 1) {
-                last_audio_send = now;
+            if (now_s - last_audio_send >= 1) {
+                last_audio_send = now_s;
 
                 uint8_t current_vol = (uint8_t)((p1val * 100) / 4095);
                 uint8_t current_mic = (uint8_t)((p2val * 100) / 4095);
@@ -458,7 +450,6 @@ void app_main(){
                     mcs_set_volume(current_vol);
                     last_sent_vol = current_vol;
                 }
-
                 if (abs((int)current_mic - (int)last_sent_mic) >= 1) {
                     mcs_set_microphone(current_mic);
                     last_sent_mic = current_mic;
@@ -466,15 +457,16 @@ void app_main(){
             }
         }
 
+        // Keypad
         if (keypad.available() > 0) {
-            int k = keypad.getEvent();
+            int  k       = keypad.getEvent();
             bool pressed = k & 0x80;
             k &= 0x7F;
             k--;
 
             uint8_t row = k / 10;
             uint8_t col = k % 10;
-            char key = keymap[col][row];
+            char    key = keymap[col][row];
 
             if (pressed) {
                 timeToSleep = awakeTime;

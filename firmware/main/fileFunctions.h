@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include "esp_littlefs.h"
+#include "buttonUI.h"
 
 // Embedded file declarations
 extern const char _binary_menu_json_start[];

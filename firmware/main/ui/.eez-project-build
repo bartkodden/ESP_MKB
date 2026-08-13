@@ -1,8 +1,6 @@
 {
   "files": [
     "actions.h",
-    "button_labels.cpp",
-    "button_labels.h",
     "fonts.h",
     "images.c",
     "images.h",

@@ -341,7 +341,6 @@ esp_err_t setupBluetooth(void) {
         }
     }
     
-    init_profile_tab();
     init_char_handles();
     
     // ═══════════════════════════════════════════════════════════

@@ -56,9 +56,15 @@ extern "C" esp_err_t ui_init_display() {
 #include <stdio.h>
 #include <string>
 
+// static void *fs_open_cb(lv_fs_drv_t *, const char *path, lv_fs_mode_t mode) {
+//     const char *flags = (mode == LV_FS_MODE_WR) ? "wb" : "rb";
+//     std::string full = std::string("/storage/") + path;
+//     return fopen(full.c_str(), flags);
+// }
 static void *fs_open_cb(lv_fs_drv_t *, const char *path, lv_fs_mode_t mode) {
     const char *flags = (mode == LV_FS_MODE_WR) ? "wb" : "rb";
-    std::string full = std::string("/storage/") + path;
+    const char *p = (path[0] == '/') ? path + 1 : path;
+    std::string full = std::string("/storage/") + p;
     return fopen(full.c_str(), flags);
 }
 
@@ -95,10 +101,11 @@ extern "C" void ui_lvgl_register_fs() {
     static lv_fs_drv_t drv;
     lv_fs_drv_init(&drv);
 
-    drv.letter  = 'L';
-    drv.open_cb = fs_open_cb;
+    drv.letter   = 'L';
+    drv.open_cb  = fs_open_cb;
     drv.close_cb = fs_close_cb;
     drv.read_cb  = fs_read_cb;
+    drv.write_cb = NULL;
     drv.seek_cb  = fs_seek_cb;
     drv.tell_cb  = fs_tell_cb;
 

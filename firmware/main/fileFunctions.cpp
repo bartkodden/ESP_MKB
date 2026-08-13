@@ -1,6 +1,7 @@
 #include "fileFunctions.h"
 #include "esp_littlefs.h"
 #include "ui/button_labels.h"
+#include "buttonUI.h"
 
 
 static const char *TAG = "FILE";
@@ -11,24 +12,57 @@ struct EmbeddedFile {
     const char *path;
 };
 
+// void copy_embedded_json_to_littlefs() {
+//     EmbeddedFile files[] = {
+//         { _binary_menu_json_start, _binary_menu_json_end, "/storage/menu.json" },
+//         { _binary_buttons_json_start, _binary_buttons_json_end, "/storage/buttons.json" }
+//     };
+
+//     for (const auto &file : files) {
+//         size_t size = file.end - file.start;
+        
+//         ESP_LOGI(TAG, "Writing %s (%d bytes)...", file.path, size);
+        
+//         FILE *f = fopen(file.path, "w");
+//         if (f) {
+//             fwrite(file.start, 1, size, f);
+//             fclose(f);
+//             ESP_LOGI(TAG, "✅ %s written and closed", file.path);
+//         } else {
+//             ESP_LOGE(TAG, "❌ Failed to open %s", file.path);
+//         }
+//     }
+// }
 void copy_embedded_json_to_littlefs() {
+    struct EmbeddedFile {
+        const char *start;
+        const char *end;
+        const char *path;
+    };
+    
     EmbeddedFile files[] = {
-        { _binary_menu_json_start, _binary_menu_json_end, "/storage/menu.json" },
+        { _binary_menu_json_start,    _binary_menu_json_end,    "/storage/menu.json"    },
         { _binary_buttons_json_start, _binary_buttons_json_end, "/storage/buttons.json" }
     };
 
     for (const auto &file : files) {
+        // Check if file already exists — if so, leave user's version intact
+        FILE *check = fopen(file.path, "r");
+        if (check) {
+            fclose(check);
+            ESP_LOGI(TAG, "✓ %s already exists, skipping", file.path);
+            continue;
+        }
+
+        // File doesn't exist — write the factory default
         size_t size = file.end - file.start;
-        
-        ESP_LOGI(TAG, "Writing %s (%d bytes)...", file.path, size);
-        
         FILE *f = fopen(file.path, "w");
         if (f) {
             fwrite(file.start, 1, size, f);
             fclose(f);
-            ESP_LOGI(TAG, "✅ %s written and closed", file.path);
+            ESP_LOGI(TAG, "✅ %s created from factory default (%d bytes)", file.path, size);
         } else {
-            ESP_LOGE(TAG, "❌ Failed to open %s", file.path);
+            ESP_LOGE(TAG, "❌ Failed to create %s", file.path);
         }
     }
 }
@@ -58,7 +92,7 @@ void flush_littlefs() {
     ESP_LOGI(TAG, "Remounting LittleFS to flush cache...");
     
     // Unmount
-    esp_err_t ret = esp_vfs_littlefs_unregister("/storage");
+    esp_err_t ret = esp_vfs_littlefs_unregister("storage");
     if (ret != ESP_OK) {
         ESP_LOGW(TAG, "Unmount warning: %s", esp_err_to_name(ret));
     }
@@ -292,7 +326,8 @@ void nextButtonSet() {
     activeButtonSetIndex = (activeButtonSetIndex + 1) % buttonSetsCount;
     ESP_LOGI(TAG, "Active button set: %s (index %d/%d)", buttonSets[activeButtonSetIndex].set_name, activeButtonSetIndex + 1, buttonSetsCount);
 
-    update_button_labels();
+    //update_button_labels();
+    buttonui_refresh();
 }
 
 void previousButtonSet() {
@@ -304,7 +339,8 @@ void previousButtonSet() {
     activeButtonSetIndex = (activeButtonSetIndex - 1 + buttonSetsCount) % buttonSetsCount;
     ESP_LOGI(TAG, "Active button set: %s (index %d/%d)",  buttonSets[activeButtonSetIndex].set_name, activeButtonSetIndex + 1, buttonSetsCount);
     
-    update_button_labels();
+    //update_button_labels();
+    buttonui_refresh();
 }
 
 void selectButtonSet(const char *set_name) {
@@ -319,7 +355,8 @@ void selectButtonSet(const char *set_name) {
             ESP_LOGI(TAG, "Active button set: %s (index %d)", set_name, i);
             
             // Update button labels
-            update_button_labels();
+            //update_button_labels();
+            buttonui_refresh();
             return;
         }
     }

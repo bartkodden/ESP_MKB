@@ -7,6 +7,7 @@
 #include "ui/screens.h"
 #include "ui/vars.h"
 #include "ui/ui.h"
+#include "buttonUI.h"
 #include "ui/styles.h"
 #include "lvgl.h"  
 
@@ -189,36 +190,49 @@ static bool execute_button_command(char key) {
     return false;  // Key not mapped
 }
 
+// void highlight_button(char key) {
+//     int ledIndex = key - 'a';
+//     if (ledIndex < 0 || ledIndex > 7) return;
+    
+//     // Map key to button matrix and button index
+//     lv_obj_t *matrix = (ledIndex < 4) ? objects.bm0 : objects.bm1;
+//     uint16_t btn_id = ledIndex % 4;
+    
+//     if (matrix) {
+//         lv_buttonmatrix_clear_button_ctrl_all(matrix, LV_BUTTONMATRIX_CTRL_CHECKED);
+//         lv_buttonmatrix_set_button_ctrl(matrix, btn_id, LV_BUTTONMATRIX_CTRL_CHECKED);
+//         ESP_LOGD(TAG, "Highlighted button %d on matrix %s", btn_id, 
+//                  (ledIndex < 4) ? "bm0" : "bm1");
+//     }
+//     ui_tick();
+// }
+
+// // CLEAR HIGHLIGHT on release
+// void clear_button_highlight(char key) {
+//     int ledIndex = key - 'a';
+//     if (ledIndex < 0 || ledIndex > 7) return;
+    
+//     lv_obj_t *matrix = (ledIndex < 4) ? objects.bm0 : objects.bm1;
+//     uint16_t btn_id = ledIndex % 4;
+    
+//     if (matrix) {
+//         lv_buttonmatrix_clear_button_ctrl(matrix, btn_id, LV_BUTTONMATRIX_CTRL_CHECKED);
+//     }
+//     ui_tick();
+// }
 void highlight_button(char key) {
-    int ledIndex = key - 'a';
-    if (ledIndex < 0 || ledIndex > 7) return;
-    
-    // Map key to button matrix and button index
-    lv_obj_t *matrix = (ledIndex < 4) ? objects.bm0 : objects.bm1;
-    uint16_t btn_id = ledIndex % 4;
-    
-    if (matrix) {
-        lv_buttonmatrix_clear_button_ctrl_all(matrix, LV_BUTTONMATRIX_CTRL_CHECKED);
-        lv_buttonmatrix_set_button_ctrl(matrix, btn_id, LV_BUTTONMATRIX_CTRL_CHECKED);
-        ESP_LOGD(TAG, "Highlighted button %d on matrix %s", btn_id, 
-                 (ledIndex < 4) ? "bm0" : "bm1");
-    }
+    int index = key - 'a';
+    if (index < 0 || index > 7) return;
+    buttonui_set_pressed((uint8_t)index, true);
+    ui_tick();
+}
+void clear_button_highlight(char key) {
+    int index = key - 'a';
+    if (index < 0 || index > 7) return;
+    buttonui_set_pressed((uint8_t)index, false);
     ui_tick();
 }
 
-// CLEAR HIGHLIGHT on release
-void clear_button_highlight(char key) {
-    int ledIndex = key - 'a';
-    if (ledIndex < 0 || ledIndex > 7) return;
-    
-    lv_obj_t *matrix = (ledIndex < 4) ? objects.bm0 : objects.bm1;
-    uint16_t btn_id = ledIndex % 4;
-    
-    if (matrix) {
-        lv_buttonmatrix_clear_button_ctrl(matrix, btn_id, LV_BUTTONMATRIX_CTRL_CHECKED);
-    }
-    ui_tick();
-}
 
 // ═══════════════════════════════════════════════════════════
 // HELPER: Handle pairing keys

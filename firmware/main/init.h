@@ -212,7 +212,6 @@ extern int soc, batPerc;
 extern bool pluggedIn, chargingState, doneCharging, charging, pairing_in_progress;
 
 // Menu
-extern bool use_eez_ui;
 extern ButtonSet* buttonSets;
 extern int buttonSetsCount;  
 extern int activeButtonSetIndex;
@@ -248,7 +247,6 @@ extern int bootCount;
 
 // Init
 void init_char_handles(void);
-void init_profile_tab(void);
 
 void encoder_isr_handler(void* arg);
 

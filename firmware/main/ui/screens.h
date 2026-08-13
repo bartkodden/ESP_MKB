@@ -11,18 +11,20 @@ extern "C" {
 
 enum ScreensEnum {
     _SCREEN_ID_FIRST = 1,
-    SCREEN_ID_MAIN = 1,
-    SCREEN_ID_MENU = 2,
-    SCREEN_ID_LOADING = 3,
-    SCREEN_ID_ERROR = 4,
+    SCREEN_ID_LOADING = 1,
+    SCREEN_ID_MAIN = 2,
+    SCREEN_ID_ERROR = 3,
+    SCREEN_ID_MENU = 4,
     _SCREEN_ID_LAST = 4
 };
 
 typedef struct _objects_t {
-    lv_obj_t *main;
-    lv_obj_t *menu;
     lv_obj_t *loading;
+    lv_obj_t *main;
     lv_obj_t *error;
+    lv_obj_t *menu;
+    lv_obj_t *obj0;
+    lv_obj_t *loadingstatus;
     lv_obj_t *topbar;
     lv_obj_t *batperclabel;
     lv_obj_t *bticon;
@@ -34,8 +36,8 @@ typedef struct _objects_t {
     lv_obj_t *devicename;
     lv_obj_t *devicename_1;
     lv_obj_t *paircode;
-    lv_obj_t *obj0;
     lv_obj_t *obj1;
+    lv_obj_t *obj2;
     lv_obj_t *mediabox;
     lv_obj_t *trackprogress;
     lv_obj_t *albumart;
@@ -44,26 +46,27 @@ typedef struct _objects_t {
     lv_obj_t *albumname;
     lv_obj_t *buttonset;
     lv_obj_t *mcs_nc;
-    lv_obj_t *obj2;
     lv_obj_t *obj3;
-    lv_obj_t *loadingstatus;
-    lv_obj_t *obj4;
     lv_obj_t *errortext;
+    lv_obj_t *topbar_1;
+    lv_obj_t *batperclabel_1;
+    lv_obj_t *bticon_1;
+    lv_obj_t *batpercbar_1;
 } objects_t;
 
 extern objects_t objects;
 
-void create_screen_main();
-void tick_screen_main();
-
-void create_screen_menu();
-void tick_screen_menu();
-
 void create_screen_loading();
 void tick_screen_loading();
 
+void create_screen_main();
+void tick_screen_main();
+
 void create_screen_error();
 void tick_screen_error();
+
+void create_screen_menu();
+void tick_screen_menu();
 
 void tick_screen_by_id(enum ScreensEnum screenId);
 void tick_screen(int screen_index);

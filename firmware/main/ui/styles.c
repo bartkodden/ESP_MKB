@@ -2,6 +2,7 @@
 #include "images.h"
 #include "fonts.h"
 #include "esp_log.h"
+#include "buttonUI.h"
 
 #include "ui.h"
 #include "screens.h"
@@ -255,5 +256,6 @@ uint32_t next_theme(uint32_t active_theme_index){
     }else{
         change_color_theme(new_theme);
     }
+    buttonui_refresh();
     return new_theme;
 }

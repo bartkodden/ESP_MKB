@@ -4,6 +4,7 @@
 #include "actions.h"
 #include "vars.h"
 #include "button_labels.h"
+#include "buttonUI.h"
 #include <string.h>
 #include <stdbool.h>
 #include "esp_log.h"
@@ -31,7 +32,8 @@ esp_err_t ui_init() {
     create_screens();
     currentScreen = 0;
     lv_scr_load(objects.main);
-    update_button_labels();
+    //update_button_labels();
+    buttonui_init(objects.bm0, objects.bm1);
     return ESP_OK;
 }
 
@@ -40,15 +42,15 @@ void ui_tick() {
     //lv_refr_now(lv_display_get_default());
 }
 
-typedef struct {
-    lv_obj_t *image_objs[8];   // matches 2×4 matrix
-} button_images_t;
+// typedef struct {
+//     lv_obj_t *image_objs[8];   // matches 2×4 matrix
+// } button_images_t;
 
-static button_images_t button_images;
+// static button_images_t button_images;
 
-static void ensure_button_image(uint8_t index) {
-    if (button_images.image_objs[index]) return;
-    button_images.image_objs[index] = lv_image_create(objects.buttonbox);
-    lv_obj_add_flag(button_images.image_objs[index], LV_OBJ_FLAG_EVENT_BUBBLE);
-    lv_obj_set_size(button_images.image_objs[index], 64, 64); // adjust as needed
-}
+// static void ensure_button_image(uint8_t index) {
+//     if (button_images.image_objs[index]) return;
+//     button_images.image_objs[index] = lv_image_create(objects.buttonbox);
+//     lv_obj_add_flag(button_images.image_objs[index], LV_OBJ_FLAG_EVENT_BUBBLE);
+//     lv_obj_set_size(button_images.image_objs[index], 64, 64); // adjust as needed
+// }

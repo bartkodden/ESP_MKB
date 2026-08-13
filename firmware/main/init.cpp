@@ -61,7 +61,6 @@ bool chargingState = false;
 bool doneCharging = false;
 
 // Menu
-bool use_eez_ui = true;
 ButtonSet* buttonSets = NULL;
 int buttonSetsCount = 0;
 int activeButtonSetIndex = 0;

@@ -57,3 +57,5 @@ extern "C" const char *get_var_loading_status() {
 extern "C" void set_var_loading_status(const char *value) {
     loading_status = value;
 }
+int32_t get_var_screen() { return 0; }
+void set_var_screen(int32_t value) { (void)value; }

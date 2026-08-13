@@ -79,37 +79,27 @@
         {
           "objID": "1a7f6ad1-03c2-4496-c212-1471956d26ed",
           "fileName": "styles.c",
-          "template": "#include \"styles.h\"\n#include \"images.h\"\n#include \"fonts.h\"\n#include \"esp_log.h\"\n\n//${eez-studio LVGL_STYLES_DEF}\n\nuint32_t next_theme(uint32_t active_theme_index){\n    uint32_t new_theme = active_theme_index + 1;\n    if(new_theme >= (sizeof (theme_colors) / sizeof (theme_colors[0]))){\n        new_theme = 0;\n        change_color_theme(0);\n    }else{\n        change_color_theme(new_theme);\n    }\n    return new_theme;\n}"
+          "template": "#include \"styles.h\"\n#include \"images.h\"\n#include \"fonts.h\"\n#include \"esp_log.h\"\n#include \"buttonUI.h\"\n\n//${eez-studio LVGL_STYLES_DEF}\n\nuint32_t next_theme(uint32_t active_theme_index){\n    uint32_t new_theme = active_theme_index + 1;\n    if(new_theme >= (sizeof (theme_colors) / sizeof (theme_colors[0]))){\n        new_theme = 0;\n        change_color_theme(0);\n    }else{\n        change_color_theme(new_theme);\n    }\n    buttonui_refresh();\n    return new_theme;\n}"
         },
         {
           "objID": "7d025e4d-c913-4653-ee86-1aa07dcde532",
           "fileName": "ui.h",
-          "template": "#include \"esp_err.h\"\n#ifndef EEZ_LVGL_UI_GUI_H\n#define EEZ_LVGL_UI_GUI_H\n\n//${eez-studio LVGL_INCLUDE}\n\n//${eez-studio EEZ_FOR_LVGL_CHECK}\n\n#if defined(EEZ_FOR_LVGL)\n#include <eez/flow/lvgl_api.h>\n#endif\n\n#if !defined(EEZ_FOR_LVGL)\n#include \"screens.h\"\n#endif\n\n#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n//${eez-studio GUI_ASSETS_DECL}\n\nesp_err_t ui_init();\nvoid ui_tick();\n\n#if !defined(EEZ_FOR_LVGL)\nvoid loadScreen(enum ScreensEnum screenId);\n#endif\n\nesp_err_t ui_init_display();\n\n#ifdef __cplusplus\n}\n#endif\n\n#endif // EEZ_LVGL_UI_GUI_H"
+          "template": "#ifndef EEZ_LVGL_UI_GUI_H\n#define EEZ_LVGL_UI_GUI_H\n#include \"esp_err.h\"\n//${eez-studio LVGL_INCLUDE}\n\n//${eez-studio EEZ_FOR_LVGL_CHECK}\n\n#if defined(EEZ_FOR_LVGL)\n#include <eez/flow/lvgl_api.h>\n#endif\n\n#if !defined(EEZ_FOR_LVGL)\n#include \"screens.h\"\n#endif\n\n#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n//${eez-studio GUI_ASSETS_DECL}\nesp_err_t ui_init();\nvoid ui_tick();\nvoid ui_lvgl_register_fs(void);\n#if !defined(EEZ_FOR_LVGL)\nvoid loadScreen(enum ScreensEnum screenId);\n#endif\n\nesp_err_t ui_init_display();\n\n#ifdef __cplusplus\n}\n#endif\n\n#endif // EEZ_LVGL_UI_GUI_H"
         },
         {
           "objID": "b496009f-11d0-43a6-ccf2-36f65d85a307",
           "fileName": "ui.c",
-          "template": "#if defined(EEZ_FOR_LVGL)\n#include <eez/core/vars.h>\n#endif\n\n#include \"ui.h\"\n#include \"screens.h\"\n#include \"images.h\"\n#include \"actions.h\"\n#include \"vars.h\"\n#include \"button_labels.h\"\n#include <string.h>\n#include <stdbool.h>\n#include \"esp_log.h\"\n#include \"esp_err.h\"\n#include \"lvgl.h\"\n\n//${eez-studio GUI_ASSETS_DEF}\n\n//${eez-studio LVGL_NATIVE_VARS_TABLE_DEF}\n\n//${eez-studio LVGL_ACTIONS_ARRAY_DEF}\n\n#if defined(EEZ_FOR_LVGL)\n\nesp_err_t ui_init() {\n    eez_flow_init(assets, sizeof(assets), (lv_obj_t **)&objects, sizeof(objects), images, sizeof(images), actions);\n    update_button_labels();\n}\n\nvoid ui_tick() {\n    eez_flow_tick();\n    tick_screen(g_currentScreen);\n    //lv_refr_now(lv_display_get_default());\n}\n\n#else\n\n// Simple mode (no EEZ flow framework)\n\nstatic int16_t currentScreen = -1;\n\nstatic lv_obj_t *getLvglObjectFromIndex(int32_t index) {\n    if (index == -1) {\n        return 0;\n    }\n    return ((lv_obj_t **)&objects)[index];\n}\n\nvoid loadScreen(enum ScreensEnum screenId) {\n    currentScreen = screenId - 1;\n    lv_obj_t *screen = getLvglObjectFromIndex(currentScreen);\n    lv_scr_load_anim(screen, LV_SCR_LOAD_ANIM_FADE_IN, 200, 0, false);\n}\n\nesp_err_t ui_init() {\n    create_screens();\n    currentScreen = 0;\n    lv_scr_load(objects.main);\n    update_button_labels();\n    return ESP_OK;\n}\n\nvoid ui_tick() {\n    tick_screen(currentScreen);\n    //lv_refr_now(lv_display_get_default());\n}\n\ntypedef struct {\n    lv_obj_t *image_objs[8];   // matches 2×4 matrix\n} button_images_t;\n\nstatic button_images_t button_images;\n\nstatic void ensure_button_image(uint8_t index) {\n    if (button_images.image_objs[index]) return;\n    button_images.image_objs[index] = lv_image_create(objects.buttonbox);\n    lv_obj_add_flag(button_images.image_objs[index], LV_OBJ_FLAG_EVENT_BUBBLE);\n    lv_obj_set_size(button_images.image_objs[index], 64, 64); // adjust as needed\n}\n\n#endif"
+          "template": "#if defined(EEZ_FOR_LVGL)\n#include <eez/core/vars.h>\n#endif\n\n#include \"ui.h\"\n#include \"screens.h\"\n#include \"images.h\"\n#include \"actions.h\"\n#include \"vars.h\"\n#include \"button_labels.h\"\n#include \"buttonUI.h\"\n#include <string.h>\n#include <stdbool.h>\n#include \"esp_log.h\"\n#include \"esp_err.h\"\n#include \"lvgl.h\"\n\n//${eez-studio GUI_ASSETS_DEF}\n\n//${eez-studio LVGL_NATIVE_VARS_TABLE_DEF}\n\n//${eez-studio LVGL_ACTIONS_ARRAY_DEF}\n\n#if defined(EEZ_FOR_LVGL)\n\nesp_err_t ui_init() {\n    eez_flow_init(assets, sizeof(assets), (lv_obj_t **)&objects, sizeof(objects), images, sizeof(images), actions);\n    //update_button_labels();\n    return ESP_OK;\n}\n\nvoid ui_tick() {\n    eez_flow_tick();\n    tick_screen(g_currentScreen);\n    //lv_refr_now(lv_display_get_default());\n}\n\n#else\n\n// Simple mode (no EEZ flow framework)\n\nstatic int16_t currentScreen = -1;\n\nstatic lv_obj_t *getLvglObjectFromIndex(int32_t index) {\n    if (index == -1) {\n        return 0;\n    }\n    return ((lv_obj_t **)&objects)[index];\n}\n\nvoid loadScreen(enum ScreensEnum screenId) {\n    currentScreen = screenId - 1;\n    lv_obj_t *screen = getLvglObjectFromIndex(currentScreen);\n    lv_scr_load_anim(screen, LV_SCR_LOAD_ANIM_FADE_IN, 200, 0, false);\n}\n\nesp_err_t ui_init() {\n    create_screens();\n    currentScreen = 0;\n    lv_scr_load(objects.main);\n    //update_button_labels();\n    buttonui_init(objects.bm0, objects.bm1);\n    return ESP_OK;\n}\n\nvoid ui_tick() {\n    tick_screen(currentScreen);\n    //lv_refr_now(lv_display_get_default());\n}\n\n// typedef struct {\n//     lv_obj_t *image_objs[8];   // matches 2×4 matrix\n// } button_images_t;\n\n// static button_images_t button_images;\n\n// static void ensure_button_image(uint8_t index) {\n//     if (button_images.image_objs[index]) return;\n//     button_images.image_objs[index] = lv_image_create(objects.buttonbox);\n//     lv_obj_add_flag(button_images.image_objs[index], LV_OBJ_FLAG_EVENT_BUBBLE);\n//     lv_obj_set_size(button_images.image_objs[index], 64, 64); // adjust as needed\n// }\n\n#endif"
         },
         {
           "objID": "0b10a484-d045-4b32-f766-b5c1166ef63a",
           "fileName": "ui_esp32.cpp",
-          "template": "#include \"ui.h\"\n#include \"init.h\"\n#include \"esp_log.h\"\n#include \"esp_err.h\"\n#include \"esp_timer.h\"\n\nstatic const char *TAG = \"UI\";\n\nstatic void lv_tick_cb(void *arg) {\n    lv_tick_inc(1);  // Advance LVGL internal tick by 1 ms\n}\n\nstatic void tft_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {\n    uint32_t w = (area->x2 - area->x1 + 1);\n    uint32_t h = (area->y2 - area->y1 + 1);\n    \n    tft.startWrite();\n    tft.setAddrWindow(area->x1, area->y1, w, h);\n    tft.pushPixels((uint16_t *)px_map, w * h);\n    tft.endWrite();\n\n    lv_display_flush_ready(disp);\n}\n\nextern \"C\" esp_err_t ui_init_display() {\n    lv_init();\n\n    // Set up LVGL tick source\n    static esp_timer_handle_t lvgl_tick_timer = nullptr;\n    const esp_timer_create_args_t lvgl_tick_timer_args = {\n        .callback = &lv_tick_cb,\n        .name = \"lvgl_tick\"\n    };\n    ESP_ERROR_CHECK(esp_timer_create(&lvgl_tick_timer_args, &lvgl_tick_timer));\n    ESP_ERROR_CHECK(esp_timer_start_periodic(lvgl_tick_timer, 1000));  // 1 ms\n\n    // Allocate draw buffers\n    size_t buf_size = 240 * 10 * sizeof(lv_color_t);  // 10 rows buffer\n    lv_color_t *buf1 = (lv_color_t *)heap_caps_malloc(buf_size, MALLOC_CAP_8BIT);\n    lv_color_t *buf2 = (lv_color_t *)heap_caps_malloc(buf_size, MALLOC_CAP_8BIT);\n\n    if (!buf1 || !buf2) {\n        ESP_LOGE(TAG, \"Failed to allocate LVGL draw buffers\");\n        if (buf1) heap_caps_free(buf1);\n        if (buf2) heap_caps_free(buf2);\n        return ESP_ERR_NO_MEM;\n    }\n\n    lv_display_t *disp = lv_display_create(240, 280);\n    lv_display_set_flush_cb(disp, tft_flush);\n    lv_display_set_buffers(disp, buf1, buf2, buf_size, LV_DISPLAY_RENDER_MODE_PARTIAL);\n\n    return ESP_OK;\n}\n\n#include <stdio.h>\n#include <string>\n\nstatic void *fs_open_cb(lv_fs_drv_t *, const char *path, lv_fs_mode_t mode) {\n    const char *flags = (mode == LV_FS_MODE_WR) ? \"wb\" : \"rb\";\n    std::string full = std::string(\"/storage/\") + path;\n    return fopen(full.c_str(), flags);\n}\n\nstatic lv_fs_res_t fs_close_cb(lv_fs_drv_t *, void *fp) {\n    if (!fp) return LV_FS_RES_INV_PARAM;\n    fclose((FILE *)fp);\n    return LV_FS_RES_OK;\n}\n\n// Same pattern for read/seek/tell:\nstatic lv_fs_res_t fs_read_cb(lv_fs_drv_t *, void *fp, void *buf, uint32_t btr, uint32_t *br) {\n    if (!fp) return LV_FS_RES_INV_PARAM;\n    size_t r = fread(buf, 1, btr, (FILE *)fp);\n    if (br) *br = (uint32_t)r;\n    return LV_FS_RES_OK;\n}\n\nstatic lv_fs_res_t fs_seek_cb(lv_fs_drv_t *, void *fp, uint32_t pos, lv_fs_whence_t whence) {\n    if (!fp) return LV_FS_RES_INV_PARAM;\n    int origin = (whence == LV_FS_SEEK_END) ? SEEK_END :\n                 (whence == LV_FS_SEEK_CUR) ? SEEK_CUR : SEEK_SET;\n    return fseek((FILE *)fp, (long)pos, origin) == 0 ? LV_FS_RES_OK : LV_FS_RES_FS_ERR;\n}\n\nstatic lv_fs_res_t fs_tell_cb(lv_fs_drv_t *, void *fp, uint32_t *pos_p) {\n    if (!fp || !pos_p) return LV_FS_RES_INV_PARAM;\n    long p = ftell((FILE *)fp);\n    if (p < 0) return LV_FS_RES_FS_ERR;\n    *pos_p = (uint32_t)p;\n    return LV_FS_RES_OK;\n}\n\nextern \"C\" void ui_lvgl_register_fs() {\n    static lv_fs_drv_t drv;\n    lv_fs_drv_init(&drv);\n\n    drv.letter  = 'L';\n    drv.open_cb = fs_open_cb;\n    drv.close_cb = fs_close_cb;\n    drv.read_cb  = fs_read_cb;\n    drv.seek_cb  = fs_seek_cb;\n    drv.tell_cb  = fs_tell_cb;\n\n    lv_fs_drv_register(&drv);\n}"
+          "template": "#include \"ui.h\"\n#include \"init.h\"\n#include \"esp_log.h\"\n#include \"esp_err.h\"\n#include \"esp_timer.h\"\n\nstatic const char *TAG = \"UI\";\n\nstatic void lv_tick_cb(void *arg) {\n    lv_tick_inc(1);  // Advance LVGL internal tick by 1 ms\n}\n\nstatic void tft_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map) {\n    uint32_t w = (area->x2 - area->x1 + 1);\n    uint32_t h = (area->y2 - area->y1 + 1);\n    \n    tft.startWrite();\n    tft.setAddrWindow(area->x1, area->y1, w, h);\n    tft.pushPixels((uint16_t *)px_map, w * h);\n    tft.endWrite();\n\n    lv_display_flush_ready(disp);\n}\n\nextern \"C\" esp_err_t ui_init_display() {\n    lv_init();\n\n    // Set up LVGL tick source\n    static esp_timer_handle_t lvgl_tick_timer = nullptr;\n    const esp_timer_create_args_t lvgl_tick_timer_args = {\n        .callback = &lv_tick_cb,\n        .name = \"lvgl_tick\"\n    };\n    ESP_ERROR_CHECK(esp_timer_create(&lvgl_tick_timer_args, &lvgl_tick_timer));\n    ESP_ERROR_CHECK(esp_timer_start_periodic(lvgl_tick_timer, 1000));  // 1 ms\n\n    // Allocate draw buffers\n    size_t buf_size = 240 * 10 * sizeof(lv_color_t);  // 10 rows buffer\n    lv_color_t *buf1 = (lv_color_t *)heap_caps_malloc(buf_size, MALLOC_CAP_8BIT);\n    lv_color_t *buf2 = (lv_color_t *)heap_caps_malloc(buf_size, MALLOC_CAP_8BIT);\n\n    if (!buf1 || !buf2) {\n        ESP_LOGE(TAG, \"Failed to allocate LVGL draw buffers\");\n        if (buf1) heap_caps_free(buf1);\n        if (buf2) heap_caps_free(buf2);\n        return ESP_ERR_NO_MEM;\n    }\n\n    lv_display_t *disp = lv_display_create(240, 280);\n    lv_display_set_flush_cb(disp, tft_flush);\n    lv_display_set_buffers(disp, buf1, buf2, buf_size, LV_DISPLAY_RENDER_MODE_PARTIAL);\n\n    return ESP_OK;\n}\n\n#include <stdio.h>\n#include <string>\n\n// static void *fs_open_cb(lv_fs_drv_t *, const char *path, lv_fs_mode_t mode) {\n//     const char *flags = (mode == LV_FS_MODE_WR) ? \"wb\" : \"rb\";\n//     std::string full = std::string(\"/storage/\") + path;\n//     return fopen(full.c_str(), flags);\n// }\nstatic void *fs_open_cb(lv_fs_drv_t *, const char *path, lv_fs_mode_t mode) {\n    const char *flags = (mode == LV_FS_MODE_WR) ? \"wb\" : \"rb\";\n    const char *p = (path[0] == '/') ? path + 1 : path;\n    std::string full = std::string(\"/storage/\") + p;\n    return fopen(full.c_str(), flags);\n}\n\nstatic lv_fs_res_t fs_close_cb(lv_fs_drv_t *, void *fp) {\n    if (!fp) return LV_FS_RES_INV_PARAM;\n    fclose((FILE *)fp);\n    return LV_FS_RES_OK;\n}\n\n// Same pattern for read/seek/tell:\nstatic lv_fs_res_t fs_read_cb(lv_fs_drv_t *, void *fp, void *buf, uint32_t btr, uint32_t *br) {\n    if (!fp) return LV_FS_RES_INV_PARAM;\n    size_t r = fread(buf, 1, btr, (FILE *)fp);\n    if (br) *br = (uint32_t)r;\n    return LV_FS_RES_OK;\n}\n\nstatic lv_fs_res_t fs_seek_cb(lv_fs_drv_t *, void *fp, uint32_t pos, lv_fs_whence_t whence) {\n    if (!fp) return LV_FS_RES_INV_PARAM;\n    int origin = (whence == LV_FS_SEEK_END) ? SEEK_END :\n                 (whence == LV_FS_SEEK_CUR) ? SEEK_CUR : SEEK_SET;\n    return fseek((FILE *)fp, (long)pos, origin) == 0 ? LV_FS_RES_OK : LV_FS_RES_FS_ERR;\n}\n\nstatic lv_fs_res_t fs_tell_cb(lv_fs_drv_t *, void *fp, uint32_t *pos_p) {\n    if (!fp || !pos_p) return LV_FS_RES_INV_PARAM;\n    long p = ftell((FILE *)fp);\n    if (p < 0) return LV_FS_RES_FS_ERR;\n    *pos_p = (uint32_t)p;\n    return LV_FS_RES_OK;\n}\n\nextern \"C\" void ui_lvgl_register_fs() {\n    static lv_fs_drv_t drv;\n    lv_fs_drv_init(&drv);\n\n    drv.letter   = 'L';\n    drv.open_cb  = fs_open_cb;\n    drv.close_cb = fs_close_cb;\n    drv.read_cb  = fs_read_cb;\n    drv.write_cb = NULL;\n    drv.seek_cb  = fs_seek_cb;\n    drv.tell_cb  = fs_tell_cb;\n\n    lv_fs_drv_register(&drv);\n}"
         },
         {
           "objID": "211479fa-d5b5-4a13-a3e3-f67358546281",
           "fileName": "vars.cpp",
-          "template": "#include \"vars.h\"\n#include \"esp_log.h\"\n#include <string>\n\nint32_t batperc;\nstd::string blepairingcode;\nstd::string bledevicename;\nstd::string buttonset;\nbool mcs_nc_show;\nstd::string loading_status;\n\nextern \"C\" int32_t get_var_batperc() {\n    return batperc;\n}\n\nextern \"C\" void set_var_batperc(int32_t value) {\n    batperc = value;\n    ESP_LOGI(\"EEZ\", \"batperc updated\");\n}\n\nextern \"C\" const char *get_var_blepairingcode() {\n    return blepairingcode.c_str();\n}\n\nextern \"C\" void set_var_blepairingcode(const char *value) {\n    blepairingcode = value;\n}\n\nextern \"C\" const char *get_var_bledevicename() {\n    return bledevicename.c_str();\n}\n\nextern \"C\" void set_var_bledevicename(const char *value) {\n    bledevicename = value;\n}\n\nextern \"C\" const char *get_var_buttonset() {\n    return buttonset.c_str();\n}\n\nextern \"C\" void set_var_buttonset(const char *value) {\n    buttonset = value;\n}\n\nextern \"C\" bool get_var_mcs_nc_show() {\n    return mcs_nc_show;\n}\n\nextern \"C\" void set_var_mcs_nc_show(bool value) {\n    mcs_nc_show = value;\n}\n\nextern \"C\" const char *get_var_loading_status() {\n    return loading_status.c_str();\n}\n\nextern \"C\" void set_var_loading_status(const char *value) {\n    loading_status = value;\n}\n"
-        },
-        {
-          "objID": "c4c68ec0-a129-40f5-ddfa-e7094ff4d1ba",
-          "fileName": "button_labels.cpp",
-          "template": "#include \"button_labels.h\"\n#include \"ui.h\"\n#include \"../init.h\"\n#include \"esp_log.h\"\n#include \"lvgl.h\"\n#include <string.h>\n#include <ctype.h>\n#include <stdio.h>\n\nstatic const char *TAG = \"BTN_LABELS\";\n\n// External state\nextern ButtonSet *buttonSets;\nextern int        buttonSetsCount;\nextern int        activeButtonSetIndex;\nvoid update_button_labels(void);\nvoid cleanup_button_labels(void);\n\nButtonMapping *getActiveButtonMappings(void);\n\n// Persistent label storage\nstatic char label_a[32] = \"\";\nstatic char label_b[32] = \"\";\nstatic char label_c[32] = \"\";\nstatic char label_d[32] = \"\";\nstatic char label_e[32] = \"\";\nstatic char label_f[32] = \"\";\nstatic char label_g[32] = \"\";\nstatic char label_h[32] = \"\";\n\n// Maps fed to the two matrices\nstatic const char *button_labels_bm0[] = {\n    label_a,\n    label_b,\n    \"\\n\",\n    label_c,\n    label_d,\n    NULL\n};\n\nstatic const char *button_labels_bm1[] = {\n    label_e,\n    label_f,\n    \"\\n\",\n    label_g,\n    label_h,\n    NULL\n};\n\n// Overlay images for each of the 8 slots (a…h).\nstatic lv_obj_t *button_images[8] = { nullptr };\n\n// --- Helpers --------------------------------------------------------------\n\nstatic bool icon_is_image(const char *icon) {\n    if (!icon || !icon[0]) return false;\n    const char *dot = strrchr(icon, '.');\n    if (!dot || dot == icon) return false;\n\n    char ext[6] = {0};\n    size_t len = strlen(dot + 1);\n    if (len == 0 || len > 5) return false;\n\n    for (size_t i = 0; i < len; ++i) {\n        ext[i] = (char)tolower((unsigned char)dot[1 + i]);\n    }\n\n    return (strcmp(ext, \"png\") == 0) ||\n           (strcmp(ext, \"jpg\") == 0) ||\n           (strcmp(ext, \"jpeg\") == 0) ||\n           (strcmp(ext, \"bmp\") == 0);\n}\n\nstatic lv_obj_t *matrix_for_index(uint8_t index, uint16_t &btn_idx) {\n    if (index < 4) {\n        btn_idx = index;\n        return objects.bm0;\n    } else {\n        btn_idx = index - 4;\n        return objects.bm1;\n    }\n}\n\nstatic void ensure_button_image(uint8_t index) {\n    if (button_images[index]) return;\n\n    uint16_t btn_idx;\n    lv_obj_t *matrix = matrix_for_index(index, btn_idx);\n    if (!matrix) return;\n\n    button_images[index] = lv_image_create(matrix);\n    lv_obj_add_flag(button_images[index], LV_OBJ_FLAG_EVENT_BUBBLE);\n    lv_obj_add_flag(button_images[index], LV_OBJ_FLAG_ADV_HITTEST);\n    lv_obj_set_size(button_images[index], LV_SIZE_CONTENT, LV_SIZE_CONTENT);\n    lv_obj_add_flag(button_images[index], LV_OBJ_FLAG_HIDDEN);\n}\n\nstatic void hide_button_image(uint8_t index) {\n    if (!button_images[index]) return;\n    lv_obj_add_flag(button_images[index], LV_OBJ_FLAG_HIDDEN);\n}\n\n\nstatic void position_button_image(uint8_t index) {\n    uint16_t btn_idx;\n    lv_obj_t *matrix = matrix_for_index(index, btn_idx);\n    if (!matrix || !button_images[index]) return;\n\n    // For maps like {btn, btn, \"\\n\", btn, btn}, we have 2 columns x 2 rows\n    const uint8_t cols = 2;\n    const uint8_t rows = 2;\n\n    uint8_t row = btn_idx / cols;\n    uint8_t col = btn_idx % cols;\n\n    lv_area_t content;\n    lv_obj_get_content_coords(matrix, &content);\n\n    lv_coord_t cell_w = lv_area_get_width(&content) / cols;\n    lv_coord_t cell_h = lv_area_get_height(&content) / rows;\n\n    lv_obj_t *img = button_images[index];\n    lv_coord_t img_w = lv_obj_get_width(img);\n    lv_coord_t img_h = lv_obj_get_height(img);\n\n    lv_coord_t x = content.x1 + col * cell_w + (cell_w - img_w) / 2;\n    lv_coord_t y = content.y1 + row * cell_h + (cell_h - img_h) / 2;\n\n    lv_obj_set_pos(img, x, y);\n}\n\n\nstatic void set_button_image(uint8_t index, const char *relative_path) {\n    uint16_t btn_idx;\n    lv_obj_t *matrix = matrix_for_index(index, btn_idx);\n    if (!matrix) return;\n\n    ensure_button_image(index);\n    lv_obj_t *img = button_images[index];\n    if (!img) return;\n\n    const char *path = relative_path;\n    if (strncmp(relative_path, \"L:/\", 3) == 0) {\n        path = relative_path;\n    } else if (relative_path[0] == '/') {\n        path = relative_path + 1;\n    }\n\n    char src[128];\n    if (strncmp(path, \"L:/\", 3) != 0) {\n        snprintf(src, sizeof(src), \"L:/%s\", path);\n    } else {\n        strlcpy(src, path, sizeof(src));\n    }\n\n    lv_obj_add_flag(img, LV_OBJ_FLAG_HIDDEN);\n    lv_image_set_src(img, src);\n    lv_obj_clear_flag(img, LV_OBJ_FLAG_HIDDEN);\n    position_button_image(index);\n}\n\n// --- Name lookup ---------------------------------------------------------\n\nstatic const ButtonMapping *find_mapping_for_key(char key_id) {\n    ButtonMapping *mappings = getActiveButtonMappings();\n    if (!mappings) {\n        ESP_LOGE(TAG, \"getActiveButtonMappings() returned NULL!\");\n        return nullptr;\n    }\n    for (int i = 0; i < 8; ++i) {\n        if (mappings[i].key_id == key_id) {\n            return &mappings[i];\n        }\n    }\n    return nullptr;\n}\n\n// --- Public API ----------------------------------------------------------\n\nvoid update_button_labels(void) {\n    if (!buttonSets || buttonSetsCount == 0) {\n        ESP_LOGW(TAG, \"No button sets loaded\");\n        return;\n    }\n    if (activeButtonSetIndex < 0 || activeButtonSetIndex >= buttonSetsCount) {\n        ESP_LOGW(TAG, \"Active set index out of range\");\n        return;\n    }\n\n    static const char key_order[8] = { 'a','b','c','d','e','f','g','h' };\n    static char *label_slots[8] = {\n        label_a,label_b,label_c,label_d,\n        label_e,label_f,label_g,label_h\n    };\n    static size_t label_sizes[8] = {\n        sizeof(label_a),sizeof(label_b),sizeof(label_c),sizeof(label_d),\n        sizeof(label_e),sizeof(label_f),sizeof(label_g),sizeof(label_h)\n    };\n\n    ESP_LOGI(TAG, \"Updating button labels for set: %s (index %d)\",\n             buttonSets[activeButtonSetIndex].set_name, activeButtonSetIndex);\n\n    for (uint8_t i = 0; i < 8; ++i) {\n        const ButtonMapping *mapping = find_mapping_for_key(key_order[i]);\n        const char *text = \"\";\n\n        if (mapping) {\n            bool has_image = icon_is_image(mapping->icon);\n            if (has_image) {\n                if (mapping->name[0]) {\n                    text = mapping->name;\n                } else {\n                    text = \" \";\n                }\n                set_button_image(i, mapping->icon);\n            } else {\n                hide_button_image(i);\n                if (mapping->icon[0]) {\n                    text = mapping->icon;\n                } else if (mapping->name[0]) {\n                    text = mapping->name;\n                } else {\n                    text = \" \";\n                }\n            }\n        } else {\n            hide_button_image(i);\n            text = \" \";\n        }\n\n        strlcpy(label_slots[i], text, label_sizes[i]);\n    }\n\n    if (objects.bm0) {\n        lv_buttonmatrix_set_map(objects.bm0, button_labels_bm0);\n        lv_obj_invalidate(objects.bm0);\n    }\n    if (objects.bm1) {\n        lv_buttonmatrix_set_map(objects.bm1, button_labels_bm1);\n        lv_obj_invalidate(objects.bm1);\n    }\n\n    for (uint8_t i = 0; i < 8; ++i) {\n        if (button_images[i]) {\n            position_button_image(i);\n        }\n    }\n}\n\nvoid cleanup_button_labels(void) {\n    for (auto &img : button_images) {\n        if (img) {\n            lv_obj_del(img);\n            img = nullptr;\n        }\n    }\n}"
-        },
-        {
-          "objID": "b82fee66-c283-43c9-bf73-b6c22c3a0ec6",
-          "fileName": "button_labels.h",
-          "template": "//#ifndef BUTTON_LABELS_H\r\n//#define BUTTON_LABELS_H\r\n//\r\n//#ifdef __cplusplus\r\n//extern \"C\" {\r\n//#endif\r\n//\r\n//// Update button labels from current button set\r\n//void update_button_labels(void);\r\n//\r\n//// Cleanup (optional)\r\n//void cleanup_button_labels(void);\r\n//\r\n//#ifdef __cplusplus\r\n//}\r\n//#endif\r\n//\r\n//#endif // BUTTON_LABELS_H\r\n\r\n#pragma once\r\n\r\n#include <stdint.h>\r\n\r\n#ifdef __cplusplus\r\nextern \"C\" {\r\n#endif\r\n\r\n#define BUTTON_ICON_MAX         64\r\n#define BUTTON_NAME_MAX         48\r\n#define BUTTON_SET_NAME_MAX     32\r\n#define BUTTON_SET_ICON_MAX     64\r\n\r\ntypedef struct {\r\n    char key_id;\r\n    char icon[BUTTON_ICON_MAX];\r\n    char name[BUTTON_NAME_MAX];\r\n    int  cmd;\r\n} ButtonMapping;\r\n\r\ntypedef struct {\r\n    char set_name[BUTTON_SET_NAME_MAX];\r\n    char set_icon[BUTTON_SET_ICON_MAX];\r\n    ButtonMapping buttonMappings[8];\r\n} ButtonSet;\r\n\r\nextern ButtonSet *buttonSets;\r\nextern int         buttonSetsCount;\r\nextern int         activeButtonSetIndex;\r\n\r\nvoid update_button_labels(void);\r\nvoid cleanup_button_labels(void);\r\n\r\n#ifdef __cplusplus\r\n}\r\n#endif"
+          "template": "#include \"vars.h\"\n#include \"esp_log.h\"\n#include <string>\n\nint32_t batperc;\nstd::string blepairingcode;\nstd::string bledevicename;\nstd::string buttonset;\nbool mcs_nc_show;\nstd::string loading_status;\n\nextern \"C\" int32_t get_var_batperc() {\n    return batperc;\n}\n\nextern \"C\" void set_var_batperc(int32_t value) {\n    batperc = value;\n    ESP_LOGI(\"EEZ\", \"batperc updated\");\n}\n\nextern \"C\" const char *get_var_blepairingcode() {\n    return blepairingcode.c_str();\n}\n\nextern \"C\" void set_var_blepairingcode(const char *value) {\n    blepairingcode = value;\n}\n\nextern \"C\" const char *get_var_bledevicename() {\n    return bledevicename.c_str();\n}\n\nextern \"C\" void set_var_bledevicename(const char *value) {\n    bledevicename = value;\n}\n\nextern \"C\" const char *get_var_buttonset() {\n    return buttonset.c_str();\n}\n\nextern \"C\" void set_var_buttonset(const char *value) {\n    buttonset = value;\n}\n\nextern \"C\" bool get_var_mcs_nc_show() {\n    return mcs_nc_show;\n}\n\nextern \"C\" void set_var_mcs_nc_show(bool value) {\n    mcs_nc_show = value;\n}\n\nextern \"C\" const char *get_var_loading_status() {\n    return loading_status.c_str();\n}\n\nextern \"C\" void set_var_loading_status(const char *value) {\n    loading_status = value;\n}\nint32_t get_var_screen() { return 0; }\nvoid set_var_screen(int32_t value) { (void)value; }"
         }
       ],
       "destinationFolder": ".",
@@ -192,6 +182,318 @@
   },
   "actions": [],
   "userPages": [
+    {
+      "objID": "d5b3f168-d4cb-4c2d-eab2-9b8e0865101c",
+      "components": [
+        {
+          "objID": "fc273570-427f-41cc-b993-da7b1b452a64",
+          "type": "LVGLScreenWidget",
+          "left": 0,
+          "top": 0,
+          "width": 240,
+          "height": 280,
+          "customInputs": [],
+          "customOutputs": [],
+          "style": {
+            "objID": "0a5e3ac2-abb5-46df-d9c8-6c0d1f71bdd2",
+            "useStyle": "default",
+            "conditionalStyles": [],
+            "childStyles": []
+          },
+          "timeline": [],
+          "eventHandlers": [],
+          "leftUnit": "px",
+          "topUnit": "px",
+          "widthUnit": "px",
+          "heightUnit": "px",
+          "children": [
+            {
+              "objID": "5ea58d0f-201f-4f06-f70b-b68c8163223c",
+              "type": "LVGLSpinnerWidget",
+              "left": 71,
+              "top": 40,
+              "width": 100,
+              "height": 100,
+              "customInputs": [],
+              "customOutputs": [],
+              "style": {
+                "objID": "cd047795-736f-4be1-ac18-f44f18b3f09a",
+                "useStyle": "default",
+                "conditionalStyles": [],
+                "childStyles": []
+              },
+              "timeline": [],
+              "eventHandlers": [],
+              "leftUnit": "px",
+              "topUnit": "px",
+              "widthUnit": "px",
+              "heightUnit": "px",
+              "children": [],
+              "widgetFlags": "",
+              "hiddenFlagType": "literal",
+              "clickableFlagType": "literal",
+              "flagScrollbarMode": "",
+              "scrollSnapX": "",
+              "scrollSnapY": "",
+              "checkedStateType": "literal",
+              "disabledStateType": "literal",
+              "states": "",
+              "localStyles": {
+                "objID": "46093465-ad66-4530-8239-d8ecc063ce65",
+                "definition": {
+                  "INDICATOR": {
+                    "DEFAULT": {
+                      "arc_color": "accentbright",
+                      "arc_width": 2
+                    }
+                  },
+                  "MAIN": {
+                    "DEFAULT": {
+                      "arc_width": 2,
+                      "arc_opa": 0
+                    }
+                  }
+                }
+              },
+              "group": "",
+              "groupIndex": 0
+            },
+            {
+              "objID": "7cde2ed1-1765-460c-d823-ad40ddb2e52f",
+              "type": "LVGLImageWidget",
+              "left": -16,
+              "top": 131,
+              "width": 273,
+              "height": 159,
+              "customInputs": [],
+              "customOutputs": [],
+              "style": {
+                "objID": "bd964155-3e14-4866-f221-3517f34bf1fb",
+                "useStyle": "default",
+                "conditionalStyles": [],
+                "childStyles": []
+              },
+              "timeline": [],
+              "eventHandlers": [],
+              "leftUnit": "px",
+              "topUnit": "px",
+              "widthUnit": "content",
+              "heightUnit": "content",
+              "children": [],
+              "widgetFlags": "",
+              "hiddenFlagType": "literal",
+              "clickableFlagType": "literal",
+              "flagScrollbarMode": "",
+              "flagScrollDirection": "",
+              "scrollSnapX": "",
+              "scrollSnapY": "",
+              "checkedStateType": "literal",
+              "disabledStateType": "literal",
+              "states": "",
+              "localStyles": {
+                "objID": "2b942184-82c1-48de-adda-19cbcd128cb7",
+                "definition": {
+                  "MAIN": {
+                    "DEFAULT": {
+                      "img_opa": 50
+                    }
+                  }
+                }
+              },
+              "group": "",
+              "groupIndex": 0,
+              "image": "pcb",
+              "setPivot": false,
+              "pivotX": 0,
+              "pivotY": 0,
+              "zoom": 200,
+              "angle": 0,
+              "innerAlign": "CENTER",
+              "sizeMode": "VIRTUAL",
+              "value": 0,
+              "valueType": "literal",
+              "previewValue": 0
+            },
+            {
+              "objID": "46a55a57-c843-45b2-8d0a-7f02873227f4",
+              "type": "LVGLLabelWidget",
+              "left": 45,
+              "top": 232,
+              "width": 150,
+              "height": 21,
+              "customInputs": [],
+              "customOutputs": [],
+              "style": {
+                "objID": "0a7dfa0f-f9a8-4d29-a3d8-3d866311f631",
+                "useStyle": "default",
+                "conditionalStyles": [],
+                "childStyles": []
+              },
+              "timeline": [],
+              "eventHandlers": [],
+              "leftUnit": "px",
+              "topUnit": "px",
+              "widthUnit": "content",
+              "heightUnit": "content",
+              "children": [],
+              "widgetFlags": "CLICK_FOCUSABLE|GESTURE_BUBBLE|PRESS_LOCK|SCROLLABLE|SCROLL_CHAIN_HOR|SCROLL_CHAIN_VER|SCROLL_ELASTIC|SCROLL_MOMENTUM|SCROLL_WITH_ARROW|SNAPPABLE",
+              "hiddenFlagType": "literal",
+              "clickableFlagType": "literal",
+              "flagScrollbarMode": "",
+              "flagScrollDirection": "",
+              "scrollSnapX": "",
+              "scrollSnapY": "",
+              "checkedStateType": "literal",
+              "disabledStateType": "literal",
+              "states": "",
+              "localStyles": {
+                "objID": "0a51dc56-b6ce-4cfb-9665-96e327216924",
+                "definition": {
+                  "MAIN": {
+                    "DEFAULT": {
+                      "text_font": "MONTSERRAT_18",
+                      "width": 150,
+                      "text_align": "CENTER"
+                    }
+                  }
+                }
+              },
+              "group": "",
+              "groupIndex": 0,
+              "text": "ESP-MKB",
+              "textType": "literal",
+              "longMode": "WRAP",
+              "recolor": false
+            },
+            {
+              "objID": "e8a2fe3f-f7b1-4188-a54a-d8cb7f5d6219",
+              "type": "LVGLLabelWidget",
+              "left": 45,
+              "top": 253,
+              "width": 150,
+              "height": 16,
+              "customInputs": [],
+              "customOutputs": [],
+              "style": {
+                "objID": "e1bedfd0-8554-46c7-b61e-e7157434f3ef",
+                "useStyle": "default",
+                "conditionalStyles": [],
+                "childStyles": []
+              },
+              "timeline": [],
+              "eventHandlers": [],
+              "leftUnit": "px",
+              "topUnit": "px",
+              "widthUnit": "content",
+              "heightUnit": "content",
+              "children": [],
+              "widgetFlags": "CLICK_FOCUSABLE|GESTURE_BUBBLE|PRESS_LOCK|SCROLLABLE|SCROLL_CHAIN_HOR|SCROLL_CHAIN_VER|SCROLL_ELASTIC|SCROLL_MOMENTUM|SCROLL_WITH_ARROW|SNAPPABLE",
+              "hiddenFlagType": "literal",
+              "clickableFlagType": "literal",
+              "flagScrollbarMode": "",
+              "flagScrollDirection": "",
+              "scrollSnapX": "",
+              "scrollSnapY": "",
+              "checkedStateType": "literal",
+              "disabledStateType": "literal",
+              "states": "",
+              "localStyles": {
+                "objID": "55667ffd-6244-40cc-819e-bed121a84aae",
+                "definition": {
+                  "MAIN": {
+                    "DEFAULT": {
+                      "text_align": "CENTER",
+                      "width": 150
+                    }
+                  }
+                }
+              },
+              "group": "",
+              "groupIndex": 0,
+              "text": "Bart Kodden",
+              "textType": "literal",
+              "longMode": "WRAP",
+              "recolor": false
+            },
+            {
+              "objID": "199c562e-1ff1-4efe-a411-87924d5cdf00",
+              "type": "LVGLLabelWidget",
+              "left": 75,
+              "top": 82,
+              "width": 90,
+              "height": 16,
+              "customInputs": [],
+              "customOutputs": [],
+              "style": {
+                "objID": "105abe71-6502-4d12-a685-9fdea1d6435d",
+                "useStyle": "default",
+                "conditionalStyles": [],
+                "childStyles": []
+              },
+              "timeline": [],
+              "eventHandlers": [],
+              "identifier": "loadingstatus",
+              "leftUnit": "px",
+              "topUnit": "px",
+              "widthUnit": "px",
+              "heightUnit": "content",
+              "children": [],
+              "widgetFlags": "",
+              "hiddenFlagType": "literal",
+              "clickableFlagType": "literal",
+              "flagScrollbarMode": "",
+              "flagScrollDirection": "",
+              "scrollSnapX": "",
+              "scrollSnapY": "",
+              "checkedStateType": "literal",
+              "disabledStateType": "literal",
+              "states": "",
+              "localStyles": {
+                "objID": "422fd96c-0476-48ee-ee1f-98fa3f5fd556",
+                "definition": {
+                  "MAIN": {
+                    "DEFAULT": {
+                      "text_align": "CENTER",
+                      "width": 90
+                    }
+                  }
+                }
+              },
+              "group": "",
+              "groupIndex": 0,
+              "text": "loading_status",
+              "textType": "expression",
+              "longMode": "WRAP",
+              "recolor": false,
+              "previewValue": "Bluetooth"
+            }
+          ],
+          "widgetFlags": "CLICKABLE",
+          "hiddenFlagType": "literal",
+          "clickableFlag": false,
+          "clickableFlagType": "literal",
+          "checkedStateType": "literal",
+          "disabledStateType": "literal",
+          "states": "",
+          "localStyles": {
+            "objID": "ad60d376-222a-4932-f9fa-cdca76337ffa"
+          },
+          "groupIndex": 0
+        }
+      ],
+      "connectionLines": [],
+      "localVariables": [],
+      "componentGroups": [],
+      "userProperties": [],
+      "name": "loading",
+      "left": 0,
+      "top": 0,
+      "width": 240,
+      "height": 280,
+      "isUsedAsUserWidget": false,
+      "createAtStart": true,
+      "deleteOnScreenUnload": false
+    },
     {
       "objID": "4b40eba7-b31a-468a-b887-11dfd0b6637f",
       "components": [
@@ -530,8 +832,8 @@
               "heightUnit": "px",
               "children": [
                 {
-                  "objID": "f145d42d-62f8-4829-d502-9fdd14ddac96",
-                  "type": "LVGLButtonMatrixWidget",
+                  "objID": "359cf905-20c0-4a34-d516-d2dd35b025ff",
+                  "type": "LVGLContainerWidget",
                   "left": 0,
                   "top": 0,
                   "width": 115,
@@ -539,12 +841,11 @@
                   "customInputs": [],
                   "customOutputs": [],
                   "style": {
-                    "objID": "25ed0b7c-69a6-41da-b9a9-4f50f7950bc4",
+                    "objID": "7af615f2-253e-4726-c667-916ee9945945",
                     "useStyle": "default",
                     "conditionalStyles": [],
                     "childStyles": []
                   },
-                  "hiddenInEditor": false,
                   "timeline": [],
                   "eventHandlers": [],
                   "identifier": "bm0",
@@ -553,7 +854,7 @@
                   "widthUnit": "px",
                   "heightUnit": "px",
                   "children": [],
-                  "widgetFlags": "",
+                  "widgetFlags": "CLICK_FOCUSABLE|GESTURE_BUBBLE|PRESS_LOCK|SCROLLABLE|SCROLL_CHAIN_HOR|SCROLL_CHAIN_VER|SCROLL_ELASTIC|SCROLL_MOMENTUM|SCROLL_WITH_ARROW|SNAPPABLE",
                   "hiddenFlagType": "literal",
                   "clickableFlag": true,
                   "clickableFlagType": "literal",
@@ -564,15 +865,9 @@
                   "checkedStateType": "literal",
                   "disabledStateType": "literal",
                   "states": "",
-                  "useStyle": "macrobuttons",
                   "localStyles": {
-                    "objID": "3e51d85e-02bd-4a86-b931-249f023e550d",
+                    "objID": "a2188e97-4aa7-4554-a66d-2ed2a6e40ae7",
                     "definition": {
-                      "ITEMS": {
-                        "CHECKED": {
-                          "bg_color": "#f39221"
-                        }
-                      },
                       "MAIN": {
                         "DEFAULT": {
                           "align": "LEFT_MID"
@@ -581,49 +876,11 @@
                     }
                   },
                   "group": "",
-                  "groupIndex": 0,
-                  "buttons": [
-                    {
-                      "objID": "23f9f6f3-5eb3-4d63-e7cc-af0a8922b81b",
-                      "newLine": false,
-                      "text": "0",
-                      "width": 1,
-                      "ctrlHidden": false,
-                      "ctrlNoRepeat": false,
-                      "ctrlDisabled": false,
-                      "ctrlCheckable": false,
-                      "ctrlChecked": false,
-                      "ctrlClickTrig": false,
-                      "ctrlPopover": false
-                    },
-                    {
-                      "objID": "88572f3f-308d-43a3-bc9d-4e0215741d1f",
-                      "text": "1",
-                      "width": 1
-                    },
-                    {
-                      "objID": "650d6b6c-7d3d-47da-8513-283ce8bc9568",
-                      "newLine": true,
-                      "text": "Btn",
-                      "width": 1
-                    },
-                    {
-                      "objID": "a2409ee7-e1b2-405a-ea9e-bd0e6ebc5344",
-                      "text": "2",
-                      "width": 1
-                    },
-                    {
-                      "objID": "50dfb5aa-d78b-41dc-9eed-91be73d3cefd",
-                      "newLine": false,
-                      "text": "3",
-                      "width": 1
-                    }
-                  ],
-                  "oneCheck": false
+                  "groupIndex": 0
                 },
                 {
-                  "objID": "7f2e9ee4-c543-4b8d-d005-700622e84ecd",
-                  "type": "LVGLButtonMatrixWidget",
+                  "objID": "87ffec0f-6adc-40fe-96fa-6bc882f4253a",
+                  "type": "LVGLContainerWidget",
                   "left": 0,
                   "top": 0,
                   "width": 115,
@@ -631,12 +888,11 @@
                   "customInputs": [],
                   "customOutputs": [],
                   "style": {
-                    "objID": "7fef20e2-c938-4938-a8d7-d6f85c9a3fdd",
+                    "objID": "142bf174-2403-4f8b-dc99-58250a035b7a",
                     "useStyle": "default",
                     "conditionalStyles": [],
                     "childStyles": []
                   },
-                  "hiddenInEditor": false,
                   "timeline": [],
                   "eventHandlers": [],
                   "identifier": "bm1",
@@ -645,7 +901,7 @@
                   "widthUnit": "px",
                   "heightUnit": "px",
                   "children": [],
-                  "widgetFlags": "",
+                  "widgetFlags": "CLICK_FOCUSABLE|GESTURE_BUBBLE|PRESS_LOCK|SCROLLABLE|SCROLL_CHAIN_HOR|SCROLL_CHAIN_VER|SCROLL_ELASTIC|SCROLL_MOMENTUM|SCROLL_WITH_ARROW|SNAPPABLE",
                   "hiddenFlagType": "literal",
                   "clickableFlag": true,
                   "clickableFlagType": "literal",
@@ -656,9 +912,8 @@
                   "checkedStateType": "literal",
                   "disabledStateType": "literal",
                   "states": "",
-                  "useStyle": "macrobuttons",
                   "localStyles": {
-                    "objID": "c664943b-6121-4b17-a8a4-13e45d6ba2f5",
+                    "objID": "dc56c6b5-c223-46e9-ab21-95ea6604404e",
                     "definition": {
                       "MAIN": {
                         "DEFAULT": {
@@ -668,37 +923,7 @@
                     }
                   },
                   "group": "",
-                  "groupIndex": 0,
-                  "buttons": [
-                    {
-                      "objID": "4fb9a059-1944-453f-ee2c-3c7e41c727e1",
-                      "text": "4",
-                      "width": 1
-                    },
-                    {
-                      "objID": "25f68a27-18ff-430b-cc4e-8dfcf962cd6f",
-                      "text": "5",
-                      "width": 1
-                    },
-                    {
-                      "objID": "e2aac474-98f3-49f7-9737-e958f269723a",
-                      "newLine": true,
-                      "text": "Btn",
-                      "width": 1
-                    },
-                    {
-                      "objID": "1b45a12d-3072-4cf5-edaf-e606d35570db",
-                      "text": "6",
-                      "width": 1
-                    },
-                    {
-                      "objID": "6af71398-07ec-475c-f681-474213c6e774",
-                      "newLine": false,
-                      "text": "7",
-                      "width": 1
-                    }
-                  ],
-                  "oneCheck": false
+                  "groupIndex": 0
                 }
               ],
               "widgetFlags": "",
@@ -1706,433 +1931,6 @@
       "deleteOnScreenUnload": false
     },
     {
-      "objID": "bd92c485-ab09-4361-fc0c-10ba2a4592fa",
-      "components": [
-        {
-          "objID": "cea5a328-6ec6-4a88-ec9a-c6c73f975b6b",
-          "type": "LVGLScreenWidget",
-          "left": 0,
-          "top": 0,
-          "width": 240,
-          "height": 280,
-          "customInputs": [],
-          "customOutputs": [],
-          "style": {
-            "objID": "7a7c3d49-6adb-4a78-f827-9b15e55edd7a",
-            "useStyle": "default",
-            "conditionalStyles": [],
-            "childStyles": []
-          },
-          "timeline": [],
-          "eventHandlers": [],
-          "leftUnit": "px",
-          "topUnit": "px",
-          "widthUnit": "px",
-          "heightUnit": "px",
-          "children": [
-            {
-              "objID": "c7131f30-ee0e-4a8d-f2f9-86d2402e124e",
-              "type": "LVGLContainerWidget",
-              "left": 0,
-              "top": 0,
-              "width": 100,
-              "height": 35,
-              "customInputs": [],
-              "customOutputs": [],
-              "style": {
-                "objID": "3f7a3635-7ed4-415a-de76-54dcef8b84da",
-                "useStyle": "default",
-                "conditionalStyles": [],
-                "childStyles": []
-              },
-              "timeline": [],
-              "eventHandlers": [],
-              "leftUnit": "px",
-              "topUnit": "px",
-              "widthUnit": "%",
-              "heightUnit": "px",
-              "children": [],
-              "widgetFlags": "CLICK_FOCUSABLE|GESTURE_BUBBLE|PRESS_LOCK|SCROLLABLE|SCROLL_CHAIN_HOR|SCROLL_CHAIN_VER|SCROLL_ELASTIC|SCROLL_MOMENTUM|SCROLL_WITH_ARROW|SNAPPABLE",
-              "hiddenFlagType": "literal",
-              "clickableFlag": true,
-              "clickableFlagType": "literal",
-              "flagScrollbarMode": "",
-              "flagScrollDirection": "",
-              "scrollSnapX": "",
-              "scrollSnapY": "",
-              "checkedStateType": "literal",
-              "disabledStateType": "literal",
-              "states": "",
-              "localStyles": {
-                "objID": "32104685-119d-4c0b-ce51-df163c0cf9e8",
-                "definition": {
-                  "MAIN": {
-                    "DEFAULT": {
-                      "align": "TOP_MID",
-                      "bg_color": "#ff0000",
-                      "bg_opa": 255,
-                      "bg_grad_dir": "VER",
-                      "bg_grad_stop": 200,
-                      "bg_grad_color": "#7a0000",
-                      "border_color": "#7a0000",
-                      "border_width": 1,
-                      "border_side": "BOTTOM"
-                    }
-                  }
-                }
-              },
-              "group": "",
-              "groupIndex": 0
-            }
-          ],
-          "widgetFlags": "CLICKABLE|PRESS_LOCK|CLICK_FOCUSABLE|GESTURE_BUBBLE|SNAPPABLE|SCROLLABLE|SCROLL_ELASTIC|SCROLL_MOMENTUM|SCROLL_CHAIN_HOR|SCROLL_CHAIN_VER",
-          "hiddenFlagType": "literal",
-          "clickableFlag": true,
-          "clickableFlagType": "literal",
-          "checkedStateType": "literal",
-          "disabledStateType": "literal",
-          "states": "",
-          "localStyles": {
-            "objID": "a45f633c-b6cc-4422-8a16-d1aca43c6e69",
-            "definition": {
-              "MAIN": {
-                "DEFAULT": {
-                  "bg_color": "#d8d8d8",
-                  "bg_grad_color": "#6a6a6a",
-                  "bg_grad_dir": "VER"
-                }
-              }
-            }
-          },
-          "groupIndex": 0
-        }
-      ],
-      "connectionLines": [],
-      "localVariables": [],
-      "componentGroups": [],
-      "userProperties": [],
-      "name": "menu",
-      "left": 0,
-      "top": 0,
-      "width": 240,
-      "height": 280,
-      "isUsedAsUserWidget": false,
-      "createAtStart": true,
-      "deleteOnScreenUnload": false
-    },
-    {
-      "objID": "d5b3f168-d4cb-4c2d-eab2-9b8e0865101c",
-      "components": [
-        {
-          "objID": "fc273570-427f-41cc-b993-da7b1b452a64",
-          "type": "LVGLScreenWidget",
-          "left": 0,
-          "top": 0,
-          "width": 240,
-          "height": 280,
-          "customInputs": [],
-          "customOutputs": [],
-          "style": {
-            "objID": "0a5e3ac2-abb5-46df-d9c8-6c0d1f71bdd2",
-            "useStyle": "default",
-            "conditionalStyles": [],
-            "childStyles": []
-          },
-          "timeline": [],
-          "eventHandlers": [],
-          "leftUnit": "px",
-          "topUnit": "px",
-          "widthUnit": "px",
-          "heightUnit": "px",
-          "children": [
-            {
-              "objID": "5ea58d0f-201f-4f06-f70b-b68c8163223c",
-              "type": "LVGLSpinnerWidget",
-              "left": 71,
-              "top": 40,
-              "width": 100,
-              "height": 100,
-              "customInputs": [],
-              "customOutputs": [],
-              "style": {
-                "objID": "cd047795-736f-4be1-ac18-f44f18b3f09a",
-                "useStyle": "default",
-                "conditionalStyles": [],
-                "childStyles": []
-              },
-              "timeline": [],
-              "eventHandlers": [],
-              "leftUnit": "px",
-              "topUnit": "px",
-              "widthUnit": "px",
-              "heightUnit": "px",
-              "children": [],
-              "widgetFlags": "",
-              "hiddenFlagType": "literal",
-              "clickableFlagType": "literal",
-              "flagScrollbarMode": "",
-              "scrollSnapX": "",
-              "scrollSnapY": "",
-              "checkedStateType": "literal",
-              "disabledStateType": "literal",
-              "states": "",
-              "localStyles": {
-                "objID": "46093465-ad66-4530-8239-d8ecc063ce65",
-                "definition": {
-                  "INDICATOR": {
-                    "DEFAULT": {
-                      "arc_color": "accentbright",
-                      "arc_width": 2
-                    }
-                  },
-                  "MAIN": {
-                    "DEFAULT": {
-                      "arc_width": 2,
-                      "arc_opa": 0
-                    }
-                  }
-                }
-              },
-              "group": "",
-              "groupIndex": 0
-            },
-            {
-              "objID": "7cde2ed1-1765-460c-d823-ad40ddb2e52f",
-              "type": "LVGLImageWidget",
-              "left": -16,
-              "top": 131,
-              "width": 273,
-              "height": 159,
-              "customInputs": [],
-              "customOutputs": [],
-              "style": {
-                "objID": "bd964155-3e14-4866-f221-3517f34bf1fb",
-                "useStyle": "default",
-                "conditionalStyles": [],
-                "childStyles": []
-              },
-              "timeline": [],
-              "eventHandlers": [],
-              "leftUnit": "px",
-              "topUnit": "px",
-              "widthUnit": "content",
-              "heightUnit": "content",
-              "children": [],
-              "widgetFlags": "",
-              "hiddenFlagType": "literal",
-              "clickableFlagType": "literal",
-              "flagScrollbarMode": "",
-              "flagScrollDirection": "",
-              "scrollSnapX": "",
-              "scrollSnapY": "",
-              "checkedStateType": "literal",
-              "disabledStateType": "literal",
-              "states": "",
-              "localStyles": {
-                "objID": "2b942184-82c1-48de-adda-19cbcd128cb7",
-                "definition": {
-                  "MAIN": {
-                    "DEFAULT": {
-                      "img_opa": 50
-                    }
-                  }
-                }
-              },
-              "group": "",
-              "groupIndex": 0,
-              "image": "pcb",
-              "setPivot": false,
-              "pivotX": 0,
-              "pivotY": 0,
-              "zoom": 200,
-              "angle": 0,
-              "innerAlign": "CENTER",
-              "sizeMode": "VIRTUAL",
-              "value": 0,
-              "valueType": "literal",
-              "previewValue": 0
-            },
-            {
-              "objID": "46a55a57-c843-45b2-8d0a-7f02873227f4",
-              "type": "LVGLLabelWidget",
-              "left": 45,
-              "top": 232,
-              "width": 150,
-              "height": 21,
-              "customInputs": [],
-              "customOutputs": [],
-              "style": {
-                "objID": "0a7dfa0f-f9a8-4d29-a3d8-3d866311f631",
-                "useStyle": "default",
-                "conditionalStyles": [],
-                "childStyles": []
-              },
-              "timeline": [],
-              "eventHandlers": [],
-              "leftUnit": "px",
-              "topUnit": "px",
-              "widthUnit": "content",
-              "heightUnit": "content",
-              "children": [],
-              "widgetFlags": "CLICK_FOCUSABLE|GESTURE_BUBBLE|PRESS_LOCK|SCROLLABLE|SCROLL_CHAIN_HOR|SCROLL_CHAIN_VER|SCROLL_ELASTIC|SCROLL_MOMENTUM|SCROLL_WITH_ARROW|SNAPPABLE",
-              "hiddenFlagType": "literal",
-              "clickableFlagType": "literal",
-              "flagScrollbarMode": "",
-              "flagScrollDirection": "",
-              "scrollSnapX": "",
-              "scrollSnapY": "",
-              "checkedStateType": "literal",
-              "disabledStateType": "literal",
-              "states": "",
-              "localStyles": {
-                "objID": "0a51dc56-b6ce-4cfb-9665-96e327216924",
-                "definition": {
-                  "MAIN": {
-                    "DEFAULT": {
-                      "text_font": "MONTSERRAT_18",
-                      "width": 150,
-                      "text_align": "CENTER"
-                    }
-                  }
-                }
-              },
-              "group": "",
-              "groupIndex": 0,
-              "text": "ESP-MKB",
-              "textType": "literal",
-              "longMode": "WRAP",
-              "recolor": false
-            },
-            {
-              "objID": "e8a2fe3f-f7b1-4188-a54a-d8cb7f5d6219",
-              "type": "LVGLLabelWidget",
-              "left": 45,
-              "top": 253,
-              "width": 150,
-              "height": 16,
-              "customInputs": [],
-              "customOutputs": [],
-              "style": {
-                "objID": "e1bedfd0-8554-46c7-b61e-e7157434f3ef",
-                "useStyle": "default",
-                "conditionalStyles": [],
-                "childStyles": []
-              },
-              "timeline": [],
-              "eventHandlers": [],
-              "leftUnit": "px",
-              "topUnit": "px",
-              "widthUnit": "content",
-              "heightUnit": "content",
-              "children": [],
-              "widgetFlags": "CLICK_FOCUSABLE|GESTURE_BUBBLE|PRESS_LOCK|SCROLLABLE|SCROLL_CHAIN_HOR|SCROLL_CHAIN_VER|SCROLL_ELASTIC|SCROLL_MOMENTUM|SCROLL_WITH_ARROW|SNAPPABLE",
-              "hiddenFlagType": "literal",
-              "clickableFlagType": "literal",
-              "flagScrollbarMode": "",
-              "flagScrollDirection": "",
-              "scrollSnapX": "",
-              "scrollSnapY": "",
-              "checkedStateType": "literal",
-              "disabledStateType": "literal",
-              "states": "",
-              "localStyles": {
-                "objID": "55667ffd-6244-40cc-819e-bed121a84aae",
-                "definition": {
-                  "MAIN": {
-                    "DEFAULT": {
-                      "text_align": "CENTER",
-                      "width": 150
-                    }
-                  }
-                }
-              },
-              "group": "",
-              "groupIndex": 0,
-              "text": "Bart Kodden",
-              "textType": "literal",
-              "longMode": "WRAP",
-              "recolor": false
-            },
-            {
-              "objID": "199c562e-1ff1-4efe-a411-87924d5cdf00",
-              "type": "LVGLLabelWidget",
-              "left": 75,
-              "top": 82,
-              "width": 90,
-              "height": 16,
-              "customInputs": [],
-              "customOutputs": [],
-              "style": {
-                "objID": "105abe71-6502-4d12-a685-9fdea1d6435d",
-                "useStyle": "default",
-                "conditionalStyles": [],
-                "childStyles": []
-              },
-              "timeline": [],
-              "eventHandlers": [],
-              "identifier": "loadingstatus",
-              "leftUnit": "px",
-              "topUnit": "px",
-              "widthUnit": "px",
-              "heightUnit": "content",
-              "children": [],
-              "widgetFlags": "",
-              "hiddenFlagType": "literal",
-              "clickableFlagType": "literal",
-              "flagScrollbarMode": "",
-              "flagScrollDirection": "",
-              "scrollSnapX": "",
-              "scrollSnapY": "",
-              "checkedStateType": "literal",
-              "disabledStateType": "literal",
-              "states": "",
-              "localStyles": {
-                "objID": "422fd96c-0476-48ee-ee1f-98fa3f5fd556",
-                "definition": {
-                  "MAIN": {
-                    "DEFAULT": {
-                      "text_align": "CENTER",
-                      "width": 90
-                    }
-                  }
-                }
-              },
-              "group": "",
-              "groupIndex": 0,
-              "text": "loading_status",
-              "textType": "expression",
-              "longMode": "WRAP",
-              "recolor": false,
-              "previewValue": "Bluetooth"
-            }
-          ],
-          "widgetFlags": "CLICKABLE",
-          "hiddenFlagType": "literal",
-          "clickableFlag": false,
-          "clickableFlagType": "literal",
-          "checkedStateType": "literal",
-          "disabledStateType": "literal",
-          "states": "",
-          "localStyles": {
-            "objID": "ad60d376-222a-4932-f9fa-cdca76337ffa"
-          },
-          "groupIndex": 0
-        }
-      ],
-      "connectionLines": [],
-      "localVariables": [],
-      "componentGroups": [],
-      "userProperties": [],
-      "name": "loading",
-      "left": 0,
-      "top": 0,
-      "width": 240,
-      "height": 280,
-      "isUsedAsUserWidget": false,
-      "createAtStart": true,
-      "deleteOnScreenUnload": false
-    },
-    {
       "objID": "a9cbd549-9df3-4a97-882c-449ac756215f",
       "components": [
         {
@@ -2329,6 +2127,355 @@
       "componentGroups": [],
       "userProperties": [],
       "name": "error",
+      "left": 0,
+      "top": 0,
+      "width": 240,
+      "height": 280,
+      "isUsedAsUserWidget": false,
+      "createAtStart": true,
+      "deleteOnScreenUnload": false
+    },
+    {
+      "objID": "bd92c485-ab09-4361-fc0c-10ba2a4592fa",
+      "components": [
+        {
+          "objID": "cea5a328-6ec6-4a88-ec9a-c6c73f975b6b",
+          "type": "LVGLScreenWidget",
+          "left": 0,
+          "top": 0,
+          "width": 240,
+          "height": 280,
+          "customInputs": [],
+          "customOutputs": [],
+          "style": {
+            "objID": "7a7c3d49-6adb-4a78-f827-9b15e55edd7a",
+            "useStyle": "default",
+            "conditionalStyles": [],
+            "childStyles": []
+          },
+          "timeline": [],
+          "eventHandlers": [],
+          "leftUnit": "px",
+          "topUnit": "px",
+          "widthUnit": "px",
+          "heightUnit": "px",
+          "children": [
+            {
+              "objID": "dba05ce7-5e41-4e77-8d69-0a0a81fcbb14",
+              "type": "LVGLContainerWidget",
+              "left": 0,
+              "top": 0,
+              "width": 100,
+              "height": 35,
+              "customInputs": [],
+              "customOutputs": [],
+              "style": {
+                "objID": "d17eb3c9-076e-4208-877f-2e2faaacc5f6",
+                "useStyle": "default",
+                "conditionalStyles": [],
+                "childStyles": []
+              },
+              "timeline": [],
+              "eventHandlers": [],
+              "identifier": "topbar_1",
+              "leftUnit": "px",
+              "topUnit": "px",
+              "widthUnit": "%",
+              "heightUnit": "px",
+              "children": [
+                {
+                  "objID": "b6583342-867b-41e7-fba5-5e08e9cb98fb",
+                  "type": "LVGLLabelWidget",
+                  "left": 99,
+                  "top": 5,
+                  "width": 50,
+                  "height": 75,
+                  "customInputs": [],
+                  "customOutputs": [],
+                  "style": {
+                    "objID": "170dd0b3-d899-4c19-a0e5-0a7753f817af",
+                    "useStyle": "default",
+                    "conditionalStyles": [],
+                    "childStyles": []
+                  },
+                  "hiddenInEditor": false,
+                  "timeline": [],
+                  "eventHandlers": [],
+                  "identifier": "batperclabel_1",
+                  "leftUnit": "px",
+                  "topUnit": "%",
+                  "widthUnit": "px",
+                  "heightUnit": "%",
+                  "children": [],
+                  "widgetFlags": "",
+                  "hiddenFlagType": "literal",
+                  "clickableFlagType": "literal",
+                  "flagScrollbarMode": "",
+                  "flagScrollDirection": "",
+                  "scrollSnapX": "",
+                  "scrollSnapY": "",
+                  "checkedState": false,
+                  "checkedStateType": "literal",
+                  "disabledStateType": "literal",
+                  "states": "",
+                  "localStyles": {
+                    "objID": "251faf7d-31db-40bc-ace0-b198e87026fc",
+                    "definition": {
+                      "MAIN": {
+                        "DEFAULT": {
+                          "text_color": "#f5f5f5",
+                          "align": "LEFT_MID",
+                          "text_font": "MONTSERRAT_18"
+                        }
+                      }
+                    }
+                  },
+                  "group": "",
+                  "groupIndex": 0,
+                  "text": "--",
+                  "textType": "literal",
+                  "longMode": "WRAP",
+                  "recolor": false
+                },
+                {
+                  "objID": "d56b1587-0564-4099-d38d-d3059cb4fba9",
+                  "type": "LVGLImageWidget",
+                  "left": 149,
+                  "top": 15,
+                  "width": 32,
+                  "height": 75,
+                  "customInputs": [],
+                  "customOutputs": [],
+                  "style": {
+                    "objID": "2ef1feeb-5e38-4f42-c5cb-b1af9208e092",
+                    "useStyle": "default",
+                    "conditionalStyles": [],
+                    "childStyles": []
+                  },
+                  "hiddenInEditor": false,
+                  "timeline": [],
+                  "eventHandlers": [],
+                  "identifier": "bticon_1",
+                  "leftUnit": "px",
+                  "topUnit": "%",
+                  "widthUnit": "content",
+                  "heightUnit": "%",
+                  "children": [],
+                  "widgetFlags": "",
+                  "hiddenFlagType": "literal",
+                  "clickableFlagType": "literal",
+                  "flagScrollbarMode": "",
+                  "flagScrollDirection": "",
+                  "scrollSnapX": "",
+                  "scrollSnapY": "",
+                  "checkedStateType": "literal",
+                  "disabledStateType": "literal",
+                  "states": "",
+                  "localStyles": {
+                    "objID": "6818c3a8-1a5f-4da6-f005-f0f7129409de"
+                  },
+                  "group": "",
+                  "groupIndex": 0,
+                  "image": "bt_off",
+                  "setPivot": false,
+                  "pivotX": 0,
+                  "pivotY": 0,
+                  "zoom": 256,
+                  "angle": 0,
+                  "innerAlign": "CENTER",
+                  "sizeMode": "VIRTUAL",
+                  "value": 0,
+                  "valueType": "literal",
+                  "previewValue": 0
+                },
+                {
+                  "objID": "3c5585b7-e49c-42f2-c319-e395f8a2bdc8",
+                  "type": "LVGLImageWidget",
+                  "left": 180,
+                  "top": 15,
+                  "width": 32,
+                  "height": 75,
+                  "customInputs": [],
+                  "customOutputs": [],
+                  "style": {
+                    "objID": "ab1403e1-6c31-476e-eb70-ce30d654e156",
+                    "useStyle": "default",
+                    "conditionalStyles": [],
+                    "childStyles": []
+                  },
+                  "hiddenInEditor": false,
+                  "timeline": [],
+                  "eventHandlers": [],
+                  "leftUnit": "px",
+                  "topUnit": "%",
+                  "widthUnit": "content",
+                  "heightUnit": "%",
+                  "children": [],
+                  "widgetFlags": "",
+                  "hiddenFlagType": "literal",
+                  "clickableFlagType": "literal",
+                  "flagScrollbarMode": "",
+                  "flagScrollDirection": "",
+                  "scrollSnapX": "",
+                  "scrollSnapY": "",
+                  "checkedStateType": "literal",
+                  "disabledStateType": "literal",
+                  "states": "",
+                  "localStyles": {
+                    "objID": "5b857d09-e812-42db-bb1c-60f699026bfe"
+                  },
+                  "group": "",
+                  "groupIndex": 0,
+                  "image": "wifi_off",
+                  "setPivot": false,
+                  "pivotX": 0,
+                  "pivotY": 0,
+                  "zoom": 256,
+                  "angle": 0,
+                  "innerAlign": "CENTER",
+                  "sizeMode": "VIRTUAL",
+                  "value": 0,
+                  "valueType": "literal",
+                  "previewValue": 0
+                },
+                {
+                  "objID": "a4a10eb3-4915-48f6-f7d4-6fc3a240e701",
+                  "type": "LVGLBarWidget",
+                  "left": 28,
+                  "top": 15,
+                  "width": 61,
+                  "height": 75,
+                  "customInputs": [],
+                  "customOutputs": [],
+                  "style": {
+                    "objID": "d06183f5-df5c-4caa-8f6b-e6e2ba70f36b",
+                    "useStyle": "default",
+                    "conditionalStyles": [],
+                    "childStyles": []
+                  },
+                  "hiddenInEditor": false,
+                  "timeline": [],
+                  "eventHandlers": [],
+                  "identifier": "batpercbar_1",
+                  "leftUnit": "px",
+                  "topUnit": "%",
+                  "widthUnit": "px",
+                  "heightUnit": "%",
+                  "children": [],
+                  "widgetFlags": "",
+                  "hiddenFlagType": "literal",
+                  "clickableFlag": false,
+                  "clickableFlagType": "literal",
+                  "flagScrollbarMode": "",
+                  "flagScrollDirection": "",
+                  "scrollSnapX": "",
+                  "scrollSnapY": "",
+                  "checkedStateType": "literal",
+                  "disabledStateType": "literal",
+                  "states": "",
+                  "localStyles": {
+                    "objID": "9cae9225-3761-45d1-c016-c46f345183d3",
+                    "definition": {
+                      "MAIN": {
+                        "DEFAULT": {
+                          "bg_color": "#ffffff",
+                          "bg_opa": 255,
+                          "bg_grad_dir": "VER",
+                          "bg_grad_color": "#c0c0c0",
+                          "radius": 5,
+                          "outline_width": 3,
+                          "outline_color": "#ffffff",
+                          "outline_pad": -1,
+                          "border_color": "#ffffff",
+                          "border_width": 1,
+                          "outline_opa": 255
+                        }
+                      },
+                      "INDICATOR": {
+                        "DEFAULT": {
+                          "bg_color": "#21f21f",
+                          "bg_opa": 255,
+                          "bg_grad_dir": "VER",
+                          "bg_grad_color": "#00b000",
+                          "clip_corner": true,
+                          "radius": 3,
+                          "radial_offset": 2
+                        }
+                      }
+                    }
+                  },
+                  "group": "",
+                  "groupIndex": 0,
+                  "min": 0,
+                  "max": 100,
+                  "mode": "NORMAL",
+                  "value": "batperc",
+                  "valueType": "expression",
+                  "valueStart": 30,
+                  "valueStartType": "literal",
+                  "enableAnimation": true
+                }
+              ],
+              "widgetFlags": "",
+              "hiddenFlagType": "literal",
+              "clickableFlag": false,
+              "clickableFlagType": "literal",
+              "flagScrollbarMode": "",
+              "flagScrollDirection": "",
+              "scrollSnapX": "",
+              "scrollSnapY": "",
+              "checkedStateType": "literal",
+              "disabledStateType": "literal",
+              "states": "",
+              "localStyles": {
+                "objID": "1c65e20b-5adc-44f2-ec6e-9771b362572c",
+                "definition": {
+                  "MAIN": {
+                    "DEFAULT": {
+                      "align": "TOP_MID",
+                      "bg_color": "accentbright",
+                      "bg_opa": 255,
+                      "bg_grad_dir": "VER",
+                      "bg_grad_stop": 200,
+                      "bg_grad_color": "accentdark",
+                      "border_color": "accentbright",
+                      "border_width": 1,
+                      "border_side": "BOTTOM"
+                    }
+                  }
+                }
+              },
+              "group": "",
+              "groupIndex": 0
+            }
+          ],
+          "widgetFlags": "CLICKABLE|PRESS_LOCK|CLICK_FOCUSABLE|GESTURE_BUBBLE|SNAPPABLE|SCROLLABLE|SCROLL_ELASTIC|SCROLL_MOMENTUM|SCROLL_CHAIN_HOR|SCROLL_CHAIN_VER",
+          "hiddenFlagType": "literal",
+          "clickableFlag": true,
+          "clickableFlagType": "literal",
+          "checkedStateType": "literal",
+          "disabledStateType": "literal",
+          "states": "",
+          "localStyles": {
+            "objID": "a45f633c-b6cc-4422-8a16-d1aca43c6e69",
+            "definition": {
+              "MAIN": {
+                "DEFAULT": {
+                  "bg_color": "#d8d8d8",
+                  "bg_grad_color": "#6a6a6a",
+                  "bg_grad_dir": "VER"
+                }
+              }
+            }
+          },
+          "groupIndex": 0
+        }
+      ],
+      "connectionLines": [],
+      "localVariables": [],
+      "componentGroups": [],
+      "userProperties": [],
+      "name": "menu",
       "left": 0,
       "top": 0,
       "width": 240,
