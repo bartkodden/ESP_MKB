@@ -92,6 +92,7 @@ device_mode_t device_mode = MODE_HID_ONLY;  // Default to HID mode
 
 // Sleep
 int goSleep = 0;
+uint32_t awakeTime = 30;
 int timeToSleep = awakeTime;
 RTC_DATA_ATTR int bootCount = 0;
 

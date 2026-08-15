@@ -221,26 +221,26 @@ esp_err_t setupADC() {
     return ESP_OK;
 }
 
-esp_err_t setupMenu(){
+esp_err_t setupMenu() {
     cJSON *menuJson = parse_json_menu("/storage/menu.json");
     if (!menuJson) {
         ESP_LOGE(SETUP_TAG, "Failed to parse menu JSON");
         return ESP_FAIL;
     }
-    
+
     list_files();
-    
+
     if (!parseMenu(menuJson, menuItems, menuSize)) {
         ESP_LOGE(SETUP_TAG, "Failed to parse menu structure");
-        cJSON_Delete(menuJson);
+        cJSON_Delete(menuJson);   // only delete on failure
         return ESP_FAIL;
     }
-    
-    cJSON_Delete(menuJson);
 
-    menuStack[0].submenu = menuItems;
+    s_menu_root = menuJson;
+
+    menuStack[0].submenu     = menuItems;
     menuStack[0].submenuSize = menuSize;
-    
+
     ESP_LOGI(SETUP_TAG, "Menu initialized successfully");
     return ESP_OK;
 }
@@ -342,6 +342,7 @@ esp_err_t setupBluetooth(void) {
     }
     
     init_char_handles();
+    init_profile_tab();
     
     // ═══════════════════════════════════════════════════════════
     // NVS INITIALIZATION

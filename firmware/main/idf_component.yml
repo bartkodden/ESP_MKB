@@ -18,3 +18,5 @@ dependencies:
   espressif/arduino-esp32: ^3.2.1
   lvgl/lvgl: ~9.4.0
   espressif/esp_lvgl_port: ^2.4.1
+  esp32async/asynctcp: ">=3.3.2"
+  esp32async/espasyncwebserver: ">=3.7.1"

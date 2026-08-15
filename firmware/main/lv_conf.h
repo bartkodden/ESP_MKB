@@ -6,8 +6,12 @@
 #define LV_COLOR_16_SWAP 1
 
 // ── Memory ───────────────────────────────────────────────────────────────────
-//#define LV_MEM_SIZE (48 * 1024U)
+// LVGL uses its own isolated memory pool
+// This pool lives in .bss and is never fragmented by BLE/WiFi/HTTP allocations
 #define LV_USE_STDLIB_MALLOC    LV_STDLIB_CLIB
+//#define LV_MEM_SIZE                  (48 * 1024U)
+#define LV_DRAW_SW_GRAD_CACHE_DEF_SIZE  2048
+#define LV_DRAW_LAYER_SIMPLE_BUF_SIZE   (24 * 1024)
 
 // ── Display ──────────────────────────────────────────────────────────────────
 #define LV_HOR_RES_MAX 240

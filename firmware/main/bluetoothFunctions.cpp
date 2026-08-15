@@ -146,20 +146,20 @@ void add_characteristic(esp_gatt_if_t gatts_if, uint8_t profile_id, uint8_t char
 void handle_gatts_read_evt(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
     uint16_t handle = param->read.handle;
 
-    if (device_mode == MODE_BOTH && !mcs_discovery_triggered && ble_conn) {
-        mcs_discovery_triggered = true;
+    // if (device_mode == MODE_BOTH && !mcs_discovery_triggered && ble_conn) {
+    //     mcs_discovery_triggered = true;
         
-        ESP_LOGI(TAG, "═══════════════════════════════════════");
-        ESP_LOGI(TAG, "First READ event - triggering MCS discovery");
-        ESP_LOGI(TAG, "  conn_id from read: %d", param->read.conn_id);
-        ESP_LOGI(TAG, "═══════════════════════════════════════");
+    //     ESP_LOGI(TAG, "═══════════════════════════════════════");
+    //     ESP_LOGI(TAG, "First READ event - triggering MCS discovery");
+    //     ESP_LOGI(TAG, "  conn_id from read: %d", param->read.conn_id);
+    //     ESP_LOGI(TAG, "═══════════════════════════════════════");
         
-        if (param->read.conn_id != 0) {
-            mcs_use_existing_connection(param->read.conn_id, gl_remote_bda);
-        } else {
-            ESP_LOGE(TAG, "Read conn_id also 0!");
-        }
-    }
+    //     if (param->read.conn_id != 0) {
+    //         mcs_use_existing_connection(param->read.conn_id, gl_remote_bda);
+    //     } else {
+    //         ESP_LOGE(TAG, "Read conn_id also 0!");
+    //     }
+    // }
 
     for (int p = 0; p < PROFILE_NUM; p++) {
         for (int i = 0; i < ble_services[p].char_count; i++) {
@@ -192,18 +192,27 @@ void handle_ble_display_events() {
     if (ble_display_queue != NULL && xQueueReceive(ble_display_queue, &evt, 0) == pdTRUE) {
         switch (evt.type) {
           case DISPLAY_PASSKEY:
-            ESP_LOGI(TAG, "Pairing: %s → %06d", evt.device_name, evt.passkey);
-            
+            ESP_LOGI(TAG, "Pairing: %s -> %06d", evt.device_name, evt.passkey);
             pairing_in_progress = true;
-            
+
             set_var_bledevicename(evt.device_name);
-            
+
             char passkey_str[8];
             snprintf(passkey_str, sizeof(passkey_str), "%06d", evt.passkey);
             set_var_blepairingcode(passkey_str);
-            
+
+            // Set labels directly — don't rely on EEZ tick binding
+            if (objects.paircode)
+                lv_label_set_text(objects.paircode, passkey_str);
+            if (objects.devicename)
+                lv_label_set_text(objects.devicename, evt.device_name);
+
             if (objects.blepairingpopup) {
-                lv_obj_clear_flag(objects.blepairingpopup, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_remove_flag(objects.blepairingpopup, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_move_foreground(objects.blepairingpopup);
+            }
+            if (objects.mcs_nc) {
+                lv_obj_add_flag(objects.mcs_nc, LV_OBJ_FLAG_HIDDEN);
             }
             break;
 
@@ -211,12 +220,24 @@ void handle_ble_display_events() {
         case DISPLAY_FAILED:
         case DISPLAY_CLEAR:
             pairing_in_progress = false;
-            
             if (objects.blepairingpopup) {
                 lv_obj_add_flag(objects.blepairingpopup, LV_OBJ_FLAG_HIDDEN);
             }
             if (objects.bticon) {
-                lv_image_set_src(objects.bticon, ble_conn ? &img_bt_on : &img_bt_off);
+                lv_image_set_src(objects.bticon,
+                                ble_conn ? &img_bt_on : &img_bt_off);
+            }
+            // Explicitly restore MCS overlay state based on current connection
+            if (!mcs_is_connected()) {
+                if (objects.mcs_nc)
+                    lv_obj_remove_flag(objects.mcs_nc, LV_OBJ_FLAG_HIDDEN);
+                if (objects.mediabox)
+                    lv_obj_add_flag(objects.mediabox, LV_OBJ_FLAG_HIDDEN);
+            } else {
+                if (objects.mcs_nc)
+                    lv_obj_add_flag(objects.mcs_nc, LV_OBJ_FLAG_HIDDEN);
+                if (objects.mediabox)
+                    lv_obj_remove_flag(objects.mediabox, LV_OBJ_FLAG_HIDDEN);
             }
             break;
         }
@@ -258,7 +279,7 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
             
         // ADD MCS SCANNING EVENTS
         case ESP_GAP_BLE_SCAN_PARAM_SET_COMPLETE_EVT:
-            ESP_LOGI(TAG, "MCS: Scan parameters set, starting scan...");
+            //ESP_LOGI(TAG, "MCS: Scan parameters set, starting scan...");
             esp_ble_gap_start_scanning(30);
             break;
             
@@ -304,11 +325,10 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
                 
                 ble_conn = true;
                 
-                // Start scanning for MCS server (could be same Windows device)
+                // Start scanning for MCS server
                 if (device_mode == MODE_BOTH) {
-                    ESP_LOGI(TAG, "HID paired - now scanning for MCS server...");
-                    vTaskDelay(pdMS_TO_TICKS(2000));  // Wait for connection to stabilize
-                    start_mcs_scanning();
+                    ble_conn = true;
+                    //start_mcs_scanning();
                 }
             } else {
                 ESP_LOGE(TAG, "✗ Authentication FAILED, reason: %d", 
@@ -367,12 +387,12 @@ void start_mcs_scanning(void) {
     vTaskDelay(pdMS_TO_TICKS(100));
     
     static esp_ble_scan_params_t scan_params = {
-        .scan_type = BLE_SCAN_TYPE_ACTIVE,
-        .own_addr_type = BLE_ADDR_TYPE_PUBLIC,
+        .scan_type          = BLE_SCAN_TYPE_PASSIVE,
+        .own_addr_type      = BLE_ADDR_TYPE_PUBLIC,
         .scan_filter_policy = BLE_SCAN_FILTER_ALLOW_ALL,
-        .scan_interval = 0x50,
-        .scan_window = 0x30,
-        .scan_duplicate = BLE_SCAN_DUPLICATE_DISABLE
+        .scan_interval      = 0xA0,   // 100ms interval (was 0x50 = 50ms)
+        .scan_window        = 0x18,   // 15ms window   (was 0x30 = 30ms)
+        .scan_duplicate     = BLE_SCAN_DUPLICATE_ENABLE
     };
     
     esp_ble_gap_set_scan_params(&scan_params);
@@ -537,7 +557,7 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
         uint16_t descr_uuid = param->add_char_descr.descr_uuid.uuid.uuid16;
         uint16_t handle = param->add_char_descr.attr_handle;
         
-        ESP_LOGI(TAG, "Descriptor added: UUID=0x%04x, handle=%d", descr_uuid, handle);
+        ESP_LOGD(TAG, "Descriptor added: UUID=0x%04x, handle=%d", descr_uuid, handle);
         
         if (descr_uuid == 0x2908) {
             ESP_LOGI(TAG, "  ✓ Report Reference descriptor (auto-response enabled)");
@@ -577,7 +597,7 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
         break;
         
     case ESP_GATTS_READ_EVT:
-        ESP_LOGI(TAG, "%s READ: handle=%d", service->name, param->read.handle);
+        //ESP_LOGI(TAG, "%s READ: handle=%d", service->name, param->read.handle);
         handle_gatts_read_evt(event, gatts_if, param);
         break;
         
@@ -613,10 +633,7 @@ void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts
         if (profile_id == HID_APP_ID) {
             ESP_LOGI(TAG, "━━━ HID Service Characteristics ━━━");
             for (int i = 0; i < service->char_count; i++) {
-                ESP_LOGI(TAG, "  %d. %s (0x%04x) → handle %d", 
-                         i+1, service->characteristics[i].name,
-                         service->characteristics[i].char_uuid,
-                         char_handles[HID_APP_ID][i]);
+                ESP_LOGI(TAG, "  %d. %s (0x%04x) → handle %d", i+1, service->characteristics[i].name,  service->characteristics[i].char_uuid,  char_handles[HID_APP_ID][i]);
             }
             ESP_LOGI(TAG, "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         }
@@ -751,8 +768,8 @@ void send_consumer_key(uint16_t key_code) {
         (uint8_t)(key_code >> 8)
     };
     
-    ESP_LOGI(TAG, "▼ PRESS consumer key: 0x%04X", key_code);
-    ESP_LOG_BUFFER_HEX(TAG, report, 2);
+    //ESP_LOGI(TAG, "▼ PRESS consumer key: 0x%04X", key_code);
+    //ESP_LOG_BUFFER_HEX(TAG, report, 2);
     
     esp_err_t ret = esp_ble_gatts_send_indicate(
         gl_profile_tab[HID_APP_ID].gatts_if,
@@ -772,7 +789,7 @@ void send_consumer_key(uint16_t key_code) {
     
     uint8_t release[2] = {0x00, 0x00};
     
-    ESP_LOGI(TAG, "▲ RELEASE consumer key");
+    //ESP_LOGI(TAG, "▲ RELEASE consumer key");
     
     ret = esp_ble_gatts_send_indicate(
         gl_profile_tab[HID_APP_ID].gatts_if,
@@ -804,7 +821,7 @@ void send_keyboard_key(uint8_t key_code, uint8_t modifier) {
     // Build keyboard report: [modifier, reserved, key1-6]
     uint8_t report[8] = {modifier, 0x00, key_code, 0x00, 0x00, 0x00, 0x00, 0x00};
     
-    ESP_LOGI(TAG, "Sending keyboard key: 0x%02X (modifier: 0x%02X)", key_code, modifier);
+    //ESP_LOGI(TAG, "Sending keyboard key: 0x%02X (modifier: 0x%02X)", key_code, modifier);
     
     esp_err_t ret = esp_ble_gatts_send_indicate(
         gl_profile_tab[HID_APP_ID].gatts_if,
@@ -854,47 +871,56 @@ void update_volume(uint8_t new_volume) {
     }
 }
 
-void check_mcs_discovery(void) {
-    static uint32_t last_attempt = 0;
-    static int attempt_count = 0;
+// void check_mcs_discovery(void) {
+//     static uint32_t last_attempt = 0;
+//     static int attempt_count = 0;
     
-    if (!mcs_discovery_needed || !ble_conn) {
-        return;
-    }
+//     if (!mcs_discovery_needed || !ble_conn) {
+//         return;
+//     }
     
-    uint32_t now = esp_timer_get_time() / 1000;  // milliseconds
+//     uint32_t now = esp_timer_get_time() / 1000;  // milliseconds
     
-    // Try every 2 seconds, max 5 attempts
-    if (now - last_attempt > 2000 && attempt_count < 5) {
-        last_attempt = now;
-        attempt_count++;
+//     // Try every 2 seconds, max 5 attempts
+//     if (now - last_attempt > 2000 && attempt_count < 5) {
+//         last_attempt = now;
+//         attempt_count++;
         
-        uint16_t conn_id = 0;
-        for (int i = 0; i < PROFILE_NUM; i++) {
-            if (gl_profile_tab[i].conn_id != 0) {
-                conn_id = gl_profile_tab[i].conn_id;
-                break;
-            }
-        }
+//         uint16_t conn_id = 0;
+//         for (int i = 0; i < PROFILE_NUM; i++) {
+//             if (gl_profile_tab[i].conn_id != 0) {
+//                 conn_id = gl_profile_tab[i].conn_id;
+//                 break;
+//             }
+//         }
         
-        if (conn_id != 0) {
-            ESP_LOGI("BLE", "═══════════════════════════════════════");
-            ESP_LOGI("BLE", "Attempt %d: Starting MCS discovery", attempt_count);
-            ESP_LOGI("BLE", "  conn_id: %d", conn_id);
-            ESP_LOGI("BLE", "═══════════════════════════════════════");
+//         if (conn_id != 0) {
+//             ESP_LOGI("BLE", "═══════════════════════════════════════");
+//             ESP_LOGI("BLE", "Attempt %d: Starting MCS discovery", attempt_count);
+//             ESP_LOGI("BLE", "  conn_id: %d", conn_id);
+//             ESP_LOGI("BLE", "═══════════════════════════════════════");
             
-            mcs_use_existing_connection(conn_id, mcs_target_bda);
-            mcs_discovery_needed = false;  // Done trying
-            attempt_count = 0;
-        } else {
-            ESP_LOGW("BLE", "Attempt %d: conn_id still 0, will retry...", attempt_count);
-        }
-    }
+//             mcs_use_existing_connection(conn_id, mcs_target_bda);
+//             mcs_discovery_needed = false;  // Done trying
+//             attempt_count = 0;
+//         } else {
+//             ESP_LOGW("BLE", "Attempt %d: conn_id still 0, will retry...", attempt_count);
+//         }
+//     }
     
-    // Give up after 5 attempts
-    if (attempt_count >= 5) {
-        ESP_LOGE("BLE", "Gave up on MCS discovery after 5 attempts");
-        mcs_discovery_needed = false;
-        attempt_count = 0;
+//     // Give up after 5 attempts
+//     if (attempt_count >= 5) {
+//         ESP_LOGE("BLE", "Gave up on MCS discovery after 5 attempts");
+//         mcs_discovery_needed = false;
+//         attempt_count = 0;
+//     }
+// }
+
+void start_ble_advertising(void) {
+    esp_err_t ret = esp_ble_gap_start_advertising(&adv_params);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Start advertising failed: %s", esp_err_to_name(ret));
+    } else {
+        ESP_LOGI(TAG, "Advertising restarted");
     }
 }

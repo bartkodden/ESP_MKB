@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>ESP-MKB Editor</title>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<style>
+:root {
+  --bg:#1a1a2e; --surf:#16213e; --surf2:#0f3460;
+  --acc:#e94560; --acc2:#f5a623;
+  --txt:#eaeaea; --txt2:#8892a4; --brd:#2a2a4a;
+  --ok:#4caf50; --warn:#ff9800; --r:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  background:var(--bg);color:var(--txt);min-height:100vh;font-size:14px}
+header{background:var(--surf);padding:12px 16px;display:flex;
+  align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--brd);position:sticky;top:0;z-index:100}
+header h1{font-size:16px;font-weight:600}
+.dot{width:8px;height:8px;border-radius:50%;background:#666;
+  display:inline-block;margin-right:6px}
+.dot.ok{background:var(--ok)} .dot.err{background:var(--acc)}
+.tabs{display:flex;background:var(--surf);border-bottom:1px solid var(--brd);
+  position:sticky;top:49px;z-index:99}
+.tab{flex:1;padding:10px;text-align:center;cursor:pointer;color:var(--txt2);
+  font-size:13px;font-weight:500;border-bottom:2px solid transparent;transition:.2s}
+.tab.active{color:var(--acc);border-bottom-color:var(--acc)}
+.pane{display:none;padding:16px} .pane.active{display:block}
+.card{background:var(--surf);border:1px solid var(--brd);
+  border-radius:var(--r);padding:12px;margin-bottom:12px}
+.card-ttl{font-size:11px;font-weight:600;color:var(--txt2);
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+/* Set tabs */
+.set-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.set-pill{background:var(--surf2);border:1px solid var(--brd);border-radius:20px;
+  padding:5px 10px;cursor:pointer;font-size:12px;color:var(--txt2);
+  display:flex;align-items:center;gap:4px;transition:.15s}
+.set-pill.active{background:var(--acc);color:#fff;border-color:var(--acc)}
+.set-pill .mi{font-family:'Material Icons Round';font-size:14px}
+/* Button grid */
+.btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.slot{background:var(--surf2);border:1px solid var(--brd);border-radius:var(--r);
+  padding:10px 8px;cursor:pointer;text-align:center;transition:.15s;position:relative}
+.slot.sel{border-color:var(--acc)}
+.slot .si{font-family:'Material Icons Round';font-size:28px;display:block;height:34px}
+.slot .sn{font-size:11px;color:var(--txt2);margin-top:3px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slot .sc{font-size:10px;color:#4a5568;margin-top:1px}
+.slot .sk{font-size:9px;color:#4a5568;position:absolute;top:4px;left:6px}
+/* Slot editor */
+.sed{background:var(--surf2);border:1px solid var(--acc);
+  border-radius:var(--r);padding:12px;margin-bottom:14px;display:none}
+.sed-ttl{font-size:12px;color:var(--acc);font-weight:600;margin-bottom:10px}
+.fg{margin-bottom:10px}
+.fl{font-size:11px;color:var(--txt2);margin-bottom:4px;display:block}
+input[type=text],input[type=number],input[type=password],select{
+  width:100%;background:var(--bg);border:1px solid var(--brd);
+  border-radius:6px;color:var(--txt);padding:8px 10px;font-size:13px;outline:none}
+input:focus,select:focus{border-color:var(--acc)}
+.ipr{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.ipv{font-family:'Material Icons Round';font-size:32px;width:44px;height:44px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--bg);border-radius:6px;border:1px solid var(--brd);flex-shrink:0}
+.pickbtn{flex:1;background:var(--surf);border:1px solid var(--brd);
+  border-radius:6px;color:var(--txt2);padding:8px;cursor:pointer;
+  text-align:center;font-size:12px}
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;
+  gap:6px;padding:10px 16px;border-radius:6px;border:none;cursor:pointer;
+  font-size:13px;font-weight:500;transition:.15s}
+.btn-p{background:var(--acc);color:#fff;width:100%}
+.btn-p:active{opacity:.8}
+.btn-s{background:var(--surf2);color:var(--txt);border:1px solid var(--brd)}
+.btn-w{background:var(--warn);color:#fff}
+.btn-ok{background:var(--ok);color:#fff}
+.btn-sm{padding:6px 12px;font-size:12px}
+.btn-f{width:100%}
+/* Settings */
+.grp{margin-bottom:4px}
+.grp-ttl{font-size:13px;font-weight:600;color:var(--acc2);margin-bottom:8px;
+  padding-bottom:4px;border-bottom:1px solid var(--brd)}
+.srow{display:flex;align-items:center;justify-content:space-between;
+  padding:8px 0;border-bottom:1px solid var(--brd);gap:8px}
+.srow:last-child{border-bottom:none}
+.sname{font-size:13px;flex-shrink:0}
+.sval{flex:1;text-align:right}
+.sval select,.sval input{background:var(--surf2);border:1px solid var(--brd);
+  width:auto;min-width:110px}
+.sval input{text-align:right}
+.abtn{background:var(--surf2);border:1px solid var(--brd);border-radius:6px;
+  color:var(--txt);padding:6px 12px;cursor:pointer;font-size:12px}
+/* System */
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.sitem{background:var(--surf2);border-radius:var(--r);padding:10px;text-align:center}
+.sitem .lbl{font-size:10px;color:var(--txt2);text-transform:uppercase;letter-spacing:.5px}
+.sitem .val{font-size:20px;font-weight:600;margin-top:2px}
+/* Icon modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;
+  display:none;align-items:flex-end}
+.overlay.open{display:flex}
+.modal{background:var(--surf);border-radius:16px 16px 0 0;width:100%;
+  max-height:82vh;display:flex;flex-direction:column;padding:16px}
+.mhdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.mttl{font-size:15px;font-weight:600}
+.mcls{background:none;border:none;color:var(--txt2);cursor:pointer;
+  font-size:20px;padding:4px}
+.isrch{width:100%;background:var(--bg);border:1px solid var(--brd);
+  border-radius:8px;color:var(--txt);padding:10px 12px;font-size:14px;
+  outline:none;margin-bottom:12px}
+.isrch:focus{border-color:var(--acc)}
+.igrid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;
+  overflow-y:auto;flex:1}
+.iitem{display:flex;flex-direction:column;align-items:center;
+  padding:8px 4px;border-radius:6px;cursor:pointer;transition:background .1s}
+.iitem:active{background:var(--surf2)}
+.iitem.sel{background:var(--acc)}
+.iitem .mi{font-family:'Material Icons Round';font-size:26px}
+.iitem span{font-size:8px;color:var(--txt2);text-align:center;margin-top:2px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%}
+/* Toast */
+.toast{position:fixed;bottom:20px;left:50%;
+  transform:translateX(-50%) translateY(100px);
+  background:var(--surf2);border:1px solid var(--brd);border-radius:20px;
+  padding:10px 20px;font-size:13px;z-index:2000;transition:transform .3s;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.ok{border-color:var(--ok);color:var(--ok)}
+.toast.err{border-color:var(--acc);color:var(--acc)}
+.note{font-size:11px;color:var(--txt2);text-align:center;margin-top:8px;display:none}
+code{font-family:monospace;background:var(--bg);padding:2px 5px;border-radius:3px}
+/* Device layout */
+.device-layout{display:flex;align-items:center;gap:0;justify-content:center;padding:4px 0}
+.panel{display:grid;grid-template-columns:1fr 1fr;gap:6px;flex:1}
+.panel-divider{width:10px;flex-shrink:0}
+.dslot{background:var(--surf2);border:2px solid var(--brd);border-radius:8px;
+  aspect-ratio:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;cursor:pointer;transition:.15s;position:relative;
+  min-height:70px;padding:4px}
+.dslot:active{transform:scale(.95)}
+.dslot.sel{border-color:var(--acc);background:rgba(233,69,96,.08)}
+.dslot .dsi{font-family:'Material Icons Round';font-size:26px;line-height:1}
+.dslot .dsn{font-size:10px;color:var(--txt2);margin-top:3px;text-align:center;
+  max-width:90%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dslot .dsk{position:absolute;top:3px;left:5px;font-size:8px;color:#4a5568}
+/* Screen pills */
+.set-scroll{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.set-scroll::-webkit-scrollbar{display:none}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⌨️ ESP-MKB</h1>
+  <div>
+    <span class="dot" id="dot"></span>
+    <span id="conn-lbl" style="font-size:12px;color:var(--txt2)">Connecting…</span>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('buttons')">Buttons</div>
+  <div class="tab"        onclick="showTab('settings')">Settings</div>
+  <div class="tab"        onclick="showTab('system')">System</div>
+</div>
+
+<!-- BUTTONS -->
+<div class="pane active" id="pane-buttons">
+
+  <!-- Screen selector with add/remove -->
+  <div class="card">
+    <div class="card-ttl">Button Screens</div>
+    <div class="set-scroll" id="set-scroll">
+      <!-- screen pills rendered here -->
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn btn-s btn-sm" style="flex:1" onclick="addScreen()">
+        <span class="material-icons-round" style="font-size:14px">add</span> Add Screen
+      </button>
+      <button class="btn btn-s btn-sm" style="flex:1;color:var(--acc)"
+              onclick="removeScreen()" id="rm-screen-btn">
+        <span class="material-icons-round" style="font-size:14px">delete</span> Remove
+      </button>
+    </div>
+    <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+      <span class="fl" style="margin:0;white-space:nowrap">Screen name:</span>
+      <input type="text" id="screen-name-input" placeholder="Screen name"
+             style="flex:1" oninput="renameScreen(this.value)">
+      <div class="ipv" id="screen-icon-prev" style="width:36px;height:36px;font-size:22px"
+           onclick="openScreenIconPicker()"></div>
+    </div>
+  </div>
+
+  <!-- Device layout — matches physical 2×2 + 2×2 -->
+  <div class="card">
+    <div class="card-ttl">Button Layout
+      <span style="color:var(--txt2);font-weight:400;font-size:10px;margin-left:6px">
+        tap to edit
+      </span>
+    </div>
+    <div class="device-layout">
+      <div class="panel" id="panel-left">
+        <!-- 4 buttons rendered by JS -->
+      </div>
+      <div class="panel-divider"></div>
+      <div class="panel" id="panel-right">
+        <!-- 4 buttons rendered by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Slot editor — slides in below layout -->
+  <div class="sed" id="sed">
+    <div class="sed-ttl" id="sed-ttl">Edit Button</div>
+    <div class="fg">
+      <span class="fl">Icon</span>
+      <div class="ipr">
+        <div class="ipv" id="ipv"></div>
+        <div class="pickbtn" onclick="openPicker()">Browse icons →</div>
+      </div>
+      <input type="text" id="e-icon" placeholder="mi:icon_name or leave empty"
+             oninput="previewIcon(this.value)">
+    </div>
+    <div class="fg">
+      <span class="fl">Label <span style="color:var(--txt2)">(max 10 chars)</span></span>
+      <input type="text" id="e-name" placeholder="Button label" maxlength="10">
+    </div>
+    <div class="fg">
+      <span class="fl">HID Command <a href="https://usb.org/sites/default/files/hut1_5.pdf"
+        target="_blank" style="color:var(--acc);font-size:10px">HID ref ↗</a></span>
+      <input type="number" id="e-cmd" placeholder="e.g. 205 = Play/Pause"
+             min="0" max="65535">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:6px">
+      <button class="btn btn-s btn-sm" style="flex:1" onclick="closeSed()">Cancel</button>
+      <button class="btn btn-p btn-sm" style="flex:1" onclick="applySed()">Apply</button>
+    </div>
+  </div>
+
+  <button class="btn btn-p btn-f" onclick="saveButtons()" style="margin-top:4px">
+    <span class="material-icons-round" style="font-size:16px">save</span>
+    Save to Device
+  </button>
+  <p class="note" id="font-note" style="margin-top:8px">
+    New icons added — go to <b>System → Rebuild Font</b> to show them on device.
+  </p>
+</div>
+
+<!-- SETTINGS -->
+<div class="pane" id="pane-settings">
+  <div id="settings-root"></div>
+  <button class="btn btn-p btn-f" onclick="saveSettings()">
+    <span class="material-icons-round" style="font-size:16px">save</span>
+    Save Settings
+  </button>
+</div>
+
+<!-- SYSTEM -->
+<div class="pane" id="pane-system">
+  <div class="card">
+    <div class="card-ttl">Device Status</div>
+    <div class="sgrid">
+      <div class="sitem"><div class="lbl">Battery</div><div class="val" id="st-bat">--</div></div>
+      <div class="sitem"><div class="lbl">Free Heap</div><div class="val" id="st-heap">--</div></div>
+      <div class="sitem"><div class="lbl">BLE</div><div class="val" id="st-ble">--</div></div>
+      <div class="sitem"><div class="lbl">Device</div><div class="val" id="st-dev" style="font-size:13px">--</div></div>
+    </div>
+    <button class="btn btn-s btn-sm btn-f" onclick="loadStatus()">Refresh</button>
+  </div>
+
+  <div class="card">
+    <div class="card-ttl">Font Subset</div>
+    <p style="font-size:12px;color:var(--txt2);margin-bottom:10px;line-height:1.5">
+      After adding new icons to buttons, rebuild the font subset.
+      The full font (<code>material_icons_24.bin</code>) must be on the device.
+    </p>
+    <button class="btn btn-s btn-f" onclick="rebuildFont()" id="subset-btn">
+      <span class="material-icons-round" style="font-size:16px">font_download</span>
+      Rebuild &amp; Upload Font Subset
+    </button>
+    <div id="subset-log" style="font-size:12px;color:var(--txt2);margin-top:8px;display:none;line-height:1.6"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-ttl">Actions</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn btn-w btn-f" onclick="reboot()">
+        <span class="material-icons-round" style="font-size:16px">restart_alt</span>
+        Reboot Device
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ICON PICKER -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="mhdr">
+      <span class="mttl">Pick Icon</span>
+      <button class="mcls" onclick="closePicker()">✕</button>
+    </div>
+    <input class="isrch" id="isrch" placeholder="Search 2235 icons…" oninput="filterIcons(this.value)">
+    <div class="igrid" id="igrid"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let BD = null;   // buttons data
+let MD = null;   // menu data
+let AS = 0;      // active set index
+let SS = -1;     // selected slot index
+let MI_MAP = {}; // icon name → codepoint
+let MI_LOADED = false;
+
+const API = (path, opts) => fetch(path, opts);
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+(async () => {
+  loadStatus();
+  await loadMI();
+  await Promise.all([loadButtons(), loadSettings()]);
+})();
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+function showTab(t) {
+  document.querySelectorAll('.tab').forEach((el, i) =>
+    el.classList.toggle('active', ['buttons','settings','system'][i] === t));
+  document.querySelectorAll('.pane').forEach(el => el.classList.remove('active'));
+  document.getElementById('pane-' + t).classList.add('active');
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let TT;
+function toast(msg, type='ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + type;
+  clearTimeout(TT);
+  TT = setTimeout(() => el.className = 'toast', 3000);
+}
+
+// ── Status ────────────────────────────────────────────────────────────────────
+async function loadStatus() {
+  try {
+    const s = await API('/api/status').then(r => r.json());
+    document.getElementById('dot').className = 'dot ok';
+    document.getElementById('conn-lbl').textContent = 'Connected';
+    document.getElementById('st-bat').textContent  = s.battery + '%';
+    document.getElementById('st-heap').textContent = Math.round(s.heap_free / 1024) + 'K';
+    document.getElementById('st-ble').textContent  = s.ble_connected ? '🔵' : '⚪';
+    document.getElementById('st-dev').textContent  = s.device || 'ESP-MKB';
+  } catch {
+    document.getElementById('dot').className = 'dot err';
+    document.getElementById('conn-lbl').textContent = 'Offline';
+  }
+}
+
+// ── Material Icons ────────────────────────────────────────────────────────────
+function loadScript(url) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = url; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+async function loadMI() {
+  if (MI_LOADED) return;
+  try {
+    await loadScript('/api/files/mi_icons.js');
+    if (typeof MI_ICONS !== 'undefined') {
+      MI_ICONS.forEach(([n, cp]) => MI_MAP[n] = cp);
+      MI_LOADED = true;
+    }
+  } catch(e) { console.warn('mi_icons.js load failed', e); }
+}
+
+function cp2char(cp) { return String.fromCodePoint(cp); }
+
+function icon2char(iconStr) {
+  if (!iconStr || !iconStr.startsWith('mi:')) return '';
+  return MI_MAP[iconStr.slice(3)] ? cp2char(MI_MAP[iconStr.slice(3)]) : '';
+}
+
+// ── Buttons ───────────────────────────────────────────────────────────────────
+async function loadButtons() {
+  try {
+    BD = await API('/api/files/buttons.json').then(r => r.json());
+    renderSets();
+    renderLayout();
+  } catch { toast('Could not load buttons.json', 'err'); }
+}
+
+function renderSets() {
+  const scroll = document.getElementById('set-scroll');
+  scroll.innerHTML = '';
+  BD.buttons.forEach((s, i) => {
+    const el = document.createElement('div');
+    el.className = 'set-pill' + (i === AS ? ' active' : '');
+    el.innerHTML = `<span class="mi">${icon2char(s.set_icon)}</span>${s.set_name}`;
+    el.onclick = () => { AS = i; closeSed(); renderSets(); renderLayout(); updateScreenEditor(); };
+    scroll.appendChild(el);
+  });
+
+  // Update remove button — can't remove last screen
+  const rmBtn = document.getElementById('rm-screen-btn');
+  if (rmBtn) rmBtn.disabled = BD.buttons.length <= 1;
+  updateScreenEditor();
+}
+
+function updateScreenEditor() {
+  const s = BD.buttons[AS];
+  const nameInp = document.getElementById('screen-name-input');
+  if (nameInp) nameInp.value = s.set_name;
+  const prev = document.getElementById('screen-icon-prev');
+  if (prev) prev.textContent = icon2char(s.set_icon);
+}
+
+function renameScreen(val) {
+  BD.buttons[AS].set_name = val;
+  renderSets();
+}
+
+let picking_screen_icon = false;
+
+function openScreenIconPicker() {
+  picking_screen_icon = true;
+  openPicker();
+}
+
+function pickIcon(name) {
+  const v = 'mi:' + name;
+  if (picking_screen_icon) {
+    BD.buttons[AS].set_icon = v;
+    document.getElementById('screen-icon-prev').textContent = icon2char(v);
+    picking_screen_icon = false;
+  } else {
+    document.getElementById('e-icon').value = v;
+    previewIcon(v);
+  }
+  closePicker();
+}
+
+function renderLayout() {
+  const s = BD.buttons[AS];
+  const left  = document.getElementById('panel-left');
+  const right = document.getElementById('panel-right');
+  left.innerHTML  = '';
+  right.innerHTML = '';
+
+  s.content.forEach((btn, i) => {
+    const el = document.createElement('div');
+    el.className = 'dslot' + (i === SS ? ' sel' : '');
+    el.innerHTML = `
+      <span class="dsk">${btn.key_id.toUpperCase()}</span>
+      <span class="dsi">${icon2char(btn.icon)}</span>
+      <div class="dsn">${btn.name || '—'}</div>`;
+    el.onclick = () => openSed(i);
+    (i < 4 ? left : right).appendChild(el);
+  });
+}
+
+function addScreen() {
+  const newSet = {
+    set_name: `Screen ${BD.buttons.length + 1}`,
+    set_icon: 'mi:grid_view',
+    content: Array.from({ length: 8 }, (_, i) => ({
+      key_id: String.fromCharCode(97 + i),
+      icon: '',
+      name: `Key ${i + 1}`,
+      cmd: 0
+    }))
+  };
+  BD.buttons.push(newSet);
+  AS = BD.buttons.length - 1;
+  closeSed();
+  renderSets();
+  renderLayout();
+  toast('Screen added — press Save to keep it');
+}
+
+function removeScreen() {
+  if (BD.buttons.length <= 1) {
+    toast('Cannot remove last screen', 'err');
+    return;
+  }
+  if (!confirm(`Remove "${BD.buttons[AS].set_name}"?`)) return;
+  BD.buttons.splice(AS, 1);
+  AS = Math.max(0, AS - 1);
+  closeSed();
+  renderSets();
+  renderLayout();
+  toast('Screen removed — press Save to confirm');
+}
+
+// ── Slot editor ───────────────────────────────────────────────────────────────
+function openSed(i) {
+  SS = i;
+  const btn = BD.buttons[AS].content[i];
+  document.getElementById('sed-ttl').textContent =
+    `Edit Button ${btn.key_id.toUpperCase()} — ${BD.buttons[AS].set_name}`;
+  document.getElementById('e-icon').value = btn.icon || '';
+  document.getElementById('e-name').value = btn.name || '';
+  document.getElementById('e-cmd').value  = btn.cmd  || 0;
+  previewIcon(btn.icon || '');
+  const sed = document.getElementById('sed');
+  sed.style.display = 'block';
+  renderLayout();
+  sed.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function closeSed() {
+  SS = -1;
+  document.getElementById('sed').style.display = 'none';
+  renderLayout();
+}
+
+function applySed() {
+  const btn = BD.buttons[AS].content[SS];
+  btn.icon = document.getElementById('e-icon').value.trim();
+  btn.name = document.getElementById('e-name').value.trim();
+  btn.cmd  = parseInt(document.getElementById('e-cmd').value) || 0;
+  closeSed();
+  toast('Applied — press Save to write to device');
+}
+
+function previewIcon(v) {
+  document.getElementById('ipv').textContent = icon2char(v.trim());
+}
+
+async function saveButtons() {
+  // Detect icons not in current subset (compare with what gen_icons.py last built)
+  const usedNames = new Set();
+  BD.buttons.forEach(s => s.content.forEach(b => {
+    if (b.icon && b.icon.startsWith('mi:')) usedNames.add(b.icon.slice(3));
+  }));
+
+  try {
+    await API('/api/files/buttons.json', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(BD, null, 2)
+    });
+    toast('Buttons saved ✓');
+    // Show font note — user may have added new icons
+    document.getElementById('font-note').style.display = 'block';
+  } catch { toast('Save failed', 'err'); }
+}
+
+// ── Icon picker ───────────────────────────────────────────────────────────────
+const PAGE = 120;
+
+function openPicker() {
+  document.getElementById('overlay').classList.add('open');
+  const srch = document.getElementById('isrch');
+  srch.value = '';
+  srch.focus();
+  buildIconGrid('');
+}
+
+function closePicker() {
+  document.getElementById('overlay').classList.remove('open');
+}
+
+function filterIcons(q) { buildIconGrid(q.toLowerCase()); }
+
+function buildIconGrid(q) {
+  const grid = document.getElementById('igrid');
+  grid.innerHTML = '';
+  if (!MI_LOADED) {
+    grid.innerHTML = '<p style="grid-column:1/-1;padding:20px;color:var(--txt2);text-align:center">Loading icons…</p>';
+    return;
+  }
+  const cur   = document.getElementById('e-icon').value.slice(3);
+  const list  = q ? MI_ICONS.filter(([n]) => n.includes(q)) : MI_ICONS;
+
+  function renderBatch(start) {
+    const end = Math.min(start + PAGE, list.length);
+    for (let i = start; i < end; i++) {
+      const [name, cp] = list[i];
+      const el = document.createElement('div');
+      el.className = 'iitem' + (name === cur ? ' sel' : '');
+      el.innerHTML = `<span class="mi">${cp2char(cp)}</span><span>${name}</span>`;
+      el.onclick = () => { pickIcon(name); };
+      grid.appendChild(el);
+    }
+    if (end < list.length) {
+      const more = document.createElement('div');
+      more.style.cssText = 'grid-column:1/-1;text-align:center;padding:8px';
+      more.innerHTML = `<button class="btn btn-s btn-sm">Load ${Math.min(PAGE, list.length - end)} more</button>`;
+      more.querySelector('button').onclick = () => { grid.removeChild(more); renderBatch(end); };
+      grid.appendChild(more);
+    }
+  }
+
+  if (!list.length) {
+    grid.innerHTML = '<p style="grid-column:1/-1;padding:20px;color:var(--txt2);text-align:center">No results</p>';
+    return;
+  }
+  renderBatch(0);
+}
+
+function pickIcon(name) {
+  const v = 'mi:' + name;
+  document.getElementById('e-icon').value = v;
+  previewIcon(v);
+  closePicker();
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+async function loadSettings() {
+  try {
+    MD = await API('/api/files/menu.json').then(r => r.json());
+    renderSettings();
+  } catch { toast('Could not load menu.json', 'err'); }
+}
+
+function renderSettings() {
+  const root = document.getElementById('settings-root');
+  root.innerHTML = '';
+  MD.menu.forEach(group => {
+    if (group.type !== 'submenu') return;
+    const card = document.createElement('div');
+    card.className = 'card grp';
+    card.innerHTML = `<div class="grp-ttl">${group.name}</div>`;
+    renderItems(group.submenu, card);
+    root.appendChild(card);
+  });
+}
+
+function renderItems(items, container) {
+  items.forEach(item => {
+    if (item.type === 'submenu') {
+      const sub = document.createElement('div');
+      sub.style.cssText = 'font-size:11px;color:var(--txt2);margin:10px 0 4px;font-weight:600';
+      sub.textContent = '— ' + item.name;
+      container.appendChild(sub);
+      renderItems(item.submenu, container);
+      return;
+    }
+    if (item.type === 'info') return;
+
+    const row = document.createElement('div');
+    row.className = 'srow';
+    row.innerHTML = `<div class="sname">${item.name}</div>`;
+    const val = document.createElement('div');
+    val.className = 'sval';
+
+    if (item.type === 'select') {
+      const sel = document.createElement('select');
+      (item.options || []).forEach(opt => {
+        const o = document.createElement('option');
+        o.value = opt; o.textContent = opt;
+        if (opt === item.value) o.selected = true;
+        sel.appendChild(o);
+      });
+      sel.onchange = () => { item.value = sel.value; };
+      val.appendChild(sel);
+
+    } else if (item.type === 'input') {
+      const inp = document.createElement('input');
+      inp.type  = (item.id === '3.4') ? 'password' : 'text';
+      inp.value = item.value || '';
+      inp.placeholder = item.name;
+      inp.oninput = () => { item.value = inp.value; };
+      val.appendChild(inp);
+
+    } else if (item.type === 'action') {
+      const btn = document.createElement('button');
+      btn.className = 'abtn';
+      btn.textContent = item.name;
+      btn.onclick = () => triggerAction(item.id);
+      val.appendChild(btn);
+    }
+
+    row.appendChild(val);
+    container.appendChild(row);
+  });
+}
+
+function triggerAction(id) {
+  if (id === '3.5') {
+    saveSettings().then(() => toast('Saved — device will reconnect'));
+  } else if (id === '3.6') {
+    loadStatus().then(() => showTab('system'));
+  } else if (id === '2.2') {
+    toast('Advertising…');
+    API('/api/action/advertise', { method: 'POST' }).catch(() => {});
+  } else if (id === '5.4') {
+    reboot();
+  }
+}
+
+async function saveSettings() {
+  try {
+    await API('/api/files/menu.json', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(MD, null, 2)
+    });
+    toast('Settings saved ✓');
+  } catch { toast('Save failed', 'err'); }
+}
+
+// ── System ────────────────────────────────────────────────────────────────────
+async function reboot() {
+  if (!confirm('Reboot ESP-MKB?')) return;
+  try { await API('/api/reboot', { method: 'POST' }); } catch {}
+  toast('Rebooting…');
+}
+
+// ── Font subset ───────────────────────────────────────────────────────────────
+async function rebuildFont() {
+  const btn = document.getElementById('subset-btn');
+  const log = document.getElementById('subset-log');
+  btn.disabled = true;
+  log.style.display = 'block';
+
+  const step = msg => { log.innerHTML += msg + '<br>'; };
+
+  try {
+    step('① Loading font subsetter…');
+    await loadScript('/api/files/font_subsetter.js');
+
+    step('② Fetching full font from device…');
+    const fr = await API('/api/files/icons/material_icons_24.bin');
+    if (!fr.ok) throw new Error(
+      'material_icons_24.bin not found. ' +
+      'Copy it to data/icons/ and reflash LittleFS.');
+    const fontBuf = await fr.arrayBuffer();
+
+    step('③ Building subset in browser…');
+    const btnsText = JSON.stringify(BD);
+    const subset   = buildSubsetFont(fontBuf, btnsText, MI_MAP);
+
+    step(`④ Uploading ${Math.round(subset.byteLength / 1024)}KB to device…`);
+    const upResp = await API(
+      '/api/icons/upload?name=material_icons_used_24.bin', {
+        method: 'POST',
+        body: new Blob([subset],
+              { type: 'application/octet-stream' })
+      });
+    if (!upResp.ok) throw new Error('Upload failed');
+
+    step('✓ Done! Reboot device to apply.');
+    toast('Font subset uploaded ✓');
+    document.getElementById('font-note').style.display = 'none';
+  } catch(e) {
+    step('✗ Error: ' + e.message);
+    toast('Font rebuild failed', 'err');
+  }
+  btn.disabled = false;
+}
+</script>
+</body>
+</html>

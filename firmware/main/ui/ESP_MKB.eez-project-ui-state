@@ -1,6 +1,6 @@
 {
   "navigation": {
-    "selectedUserPageObject": "[ESP_MKB.eez-project]:/userPages/3",
+    "selectedUserPageObject": "[ESP_MKB.eez-project]:/userPages/1",
     "selectedGlobalVariableObject": "[ESP_MKB.eez-project]:/variables/globalVariables/1",
     "selectedThemeObject": "[ESP_MKB.eez-project]:/themes/0",
     "subnavigationSelectedItems": {
@@ -199,7 +199,6 @@
               "type": "tabset",
               "id": "EDITORS",
               "weight": 56.628914057295134,
-              "selected": 1,
               "enableDeleteWhenEmpty": false,
               "enableClose": false,
               "children": [
@@ -218,10 +217,10 @@
                 {
                   "type": "tab",
                   "id": "#f70bbed7-5134-441c-bf8f-a4b69d988f44",
-                  "name": "menu",
+                  "name": "Main",
                   "component": "editor",
                   "config": {
-                    "objectPath": "[ESP_MKB.eez-project]:/userPages/3",
+                    "objectPath": "[ESP_MKB.eez-project]:/userPages/1",
                     "permanent": false
                   },
                   "icon": "svg:page"
@@ -1073,7 +1072,9 @@
     "[ESP_MKB.eez-project]:/userPages/3[flow-state]": {
       "selectionFront": {},
       "selectionBack": {
-        "0": {}
+        "0": {
+          "0": {}
+        }
       },
       "transform": {
         "translate": {
@@ -1110,7 +1111,11 @@
       "selectionFront": {},
       "selectionBack": {
         "0": {
-          "0": {},
+          "0": {
+            "2": {
+              "$selected": true
+            }
+          },
           "1": {
             "0": {}
           }
@@ -1118,7 +1123,7 @@
       },
       "transform": {
         "translate": {
-          "x": 280,
+          "x": 380,
           "y": -140
         },
         "scale": 1

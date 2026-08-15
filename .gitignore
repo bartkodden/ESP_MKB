@@ -5,7 +5,7 @@ firmware/patches.cmake_old
 firmware/sdkconfig.old
 firmware/managed_components/
 
-# Exclude examples from submodulesC
+# Exclude examples from submodules
 firmware/components/*/examples/
 firmware/components/*/docs/
 firmware/components/*/test/
@@ -35,3 +35,7 @@ firmware/main/data/icons/material_icons_used_24.bin
 # Keep the folder structure
 !firmware/main/data/icons/.gitkeep
 !firmware/main/data/icons/custom/.gitkeep
+
+#hide settings
+firmware/main/menu.json
+!firmware/main/menu.json_example

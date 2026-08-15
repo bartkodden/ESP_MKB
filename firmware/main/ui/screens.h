@@ -28,6 +28,7 @@ typedef struct _objects_t {
     lv_obj_t *topbar;
     lv_obj_t *batperclabel;
     lv_obj_t *bticon;
+    lv_obj_t *wifiicon;
     lv_obj_t *batpercbar;
     lv_obj_t *buttonbox;
     lv_obj_t *bm0;

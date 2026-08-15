@@ -55,6 +55,7 @@ ESP_MKB - by B Kodden
 #include "mcs_client.h"
 #include "functions.h"
 #include "setupFunctions.h"
+#include "wifiManager.h"
 
 static const char *MAIN_TAG = "ESP_MKB";
 
@@ -69,7 +70,7 @@ static void lvgl_tick() {
 
 static inline void update_loading_status(const char *msg) {
     set_var_loading_status(msg);
-    lvgl_tick();    // always redraw immediately after updating the label
+    lvgl_tick();
 }
 
 static void bar_anim_cb(void *var, int32_t val) {
@@ -120,8 +121,6 @@ void app_main() {
     ui_lvgl_register_fs();
     ui_init();
 
-    // Show loading screen — from here on use update_loading_status() which
-    // calls lvgl_tick() automatically to keep the display responsive
     lv_scr_load(objects.loading);
     update_loading_status("Starting...");
 
@@ -180,11 +179,11 @@ void app_main() {
     // ── Battery gauge (~600ms I2C init) ───────────────────────────────────────
     update_loading_status("Battery...");
     ESP_LOGI(MAIN_TAG, "Initializing battery gauge");
-    ret = setupBQ27441();           // slow — lvgl_tick() is called via update_loading_status above
+    ret = setupBQ27441();
     if (ret != ESP_OK) {
         ESP_LOGW(MAIN_TAG, "Battery gauge failed: %s", esp_err_to_name(ret));
     }
-    lvgl_tick();                    // extra tick after slow step
+    lvgl_tick();
 
     // ── Keypad ────────────────────────────────────────────────────────────────
     update_loading_status("Keypad...");
@@ -220,7 +219,7 @@ void app_main() {
     copy_embedded_json_to_littlefs();
     loadButtonMappings();
     lvgl_tick();
-    buttonui_refresh();             // font + data both ready now
+    buttonui_refresh();
     lvgl_tick();
 
     // ── Menu ──────────────────────────────────────────────────────────────────
@@ -234,6 +233,11 @@ void app_main() {
     }
     lvgl_tick();
 
+    // ── WiFi ──────────────────────────────────────────────────────────────────
+    update_loading_status("WiFi...");
+    wifimanager_init();
+    lvgl_tick();
+
     // ── Encoder ───────────────────────────────────────────────────────────────
     update_loading_status("Encoder...");
     ESP_LOGI(MAIN_TAG, "Initializing encoder");
@@ -244,10 +248,10 @@ void app_main() {
 
     // ── MCS client ────────────────────────────────────────────────────────────
     update_loading_status("MCS...");
-    if (device_mode == MODE_MCS_ONLY || device_mode == MODE_BOTH) {
-        ESP_LOGI(MAIN_TAG, "Initializing MCS client");
-        mcs_client_init();
-    }
+    // if (device_mode == MODE_MCS_ONLY || device_mode == MODE_BOTH) {
+    //     ESP_LOGI(MAIN_TAG, "Initializing MCS client");
+    //     mcs_client_init();
+    // }
 
     // ── Ready ─────────────────────────────────────────────────────────────────
     current_volume = 50;
@@ -266,6 +270,13 @@ void app_main() {
     ESP_LOGI(MAIN_TAG, "Switching to main screen");
     lv_scr_load(objects.main);
     lvgl_tick();
+
+    // Start MCS scan after screen loads — WiFi stable, less heap pressure
+    if (ble_conn && (device_mode == MODE_MCS_ONLY || device_mode == MODE_BOTH)) {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        ESP_LOGI(MAIN_TAG, "Starting initial MCS scan");
+        start_mcs_scanning();
+    }
 
     ESP_LOGI(MAIN_TAG, "=== Initialization Complete ===");
     ESP_LOGI(MAIN_TAG, "Entering main loop");
@@ -289,37 +300,47 @@ void app_main() {
                                  ble_conn ? &img_bt_on : &img_bt_off);
             }
         }
-
+        static bool last_wifi_active = false;
+        bool wifi_active = wifimanager_is_active();
+        if (wifi_active != last_wifi_active) {
+            last_wifi_active = wifi_active;
+            if (objects.wifiicon) {
+                lv_image_set_src(objects.wifiicon,
+                                wifi_active ? &img_wifi_on : &img_wifi_off);
+            }
+        }
+        
         // MCS status + track progress
         if (device_mode == MODE_BOTH) {
             uint32_t now = esp_timer_get_time() / 1000000;
 
-            if (now - last_mcs_check >= 10) {
+            if (now - last_mcs_check >= 30) {    // ← was 10, now 30
                 last_mcs_check = now;
 
-                bool mcs_connected = mcs_is_connected();
-                static bool last_mcs_status = false;
-                if (mcs_connected != last_mcs_status) {
-                    last_mcs_status = mcs_connected;
-                    if (mcs_connected) {
-                        ESP_LOGI(MAIN_TAG, "✓ MCS connected");
-                        if (objects.mcs_nc)
-                            lv_obj_add_flag(objects.mcs_nc, LV_OBJ_FLAG_HIDDEN);
-                        if (objects.mediabox)
-                            lv_obj_remove_flag(objects.mediabox, LV_OBJ_FLAG_HIDDEN);
-                    } else {
-                        ESP_LOGI(MAIN_TAG, "✗ MCS disconnected");
-                        if (objects.mcs_nc)
-                            lv_obj_remove_flag(objects.mcs_nc, LV_OBJ_FLAG_HIDDEN);
-                        if (objects.mediabox)
-                            lv_obj_add_flag(objects.mediabox, LV_OBJ_FLAG_HIDDEN);
-                    }
-                }
+                if (!pairing_in_progress) {
+                    bool mcs_connected = mcs_is_connected();
+                    static bool last_mcs_status = false;
 
-                if (!mcs_connected && ble_conn) {
-                    ESP_LOGI(MAIN_TAG, "Restarting MCS scan");
-                    extern void start_mcs_scanning(void);
-                    start_mcs_scanning();
+                    if (mcs_connected != last_mcs_status) {
+                        last_mcs_status = mcs_connected;
+                        if (mcs_connected) {
+                            if (objects.mcs_nc)
+                                lv_obj_add_flag(objects.mcs_nc, LV_OBJ_FLAG_HIDDEN);
+                            if (objects.mediabox)
+                                lv_obj_remove_flag(objects.mediabox, LV_OBJ_FLAG_HIDDEN);
+                        } else {
+                            if (objects.mcs_nc)
+                                lv_obj_remove_flag(objects.mcs_nc, LV_OBJ_FLAG_HIDDEN);
+                            if (objects.mediabox)
+                                lv_obj_add_flag(objects.mediabox, LV_OBJ_FLAG_HIDDEN);
+                        }
+                    }
+
+                    // Only restart scan if disconnected, BLE up, and not already scanning
+                    if (!mcs_connected && ble_conn && !mcs_is_scanning()) {
+                        ESP_LOGI(MAIN_TAG, "Restarting MCS scan");
+                        start_mcs_scanning();
+                    }
                 }
             }
 
@@ -351,7 +372,7 @@ void app_main() {
                 }
             }
 
-            check_mcs_discovery();
+            //check_mcs_discovery();
         }
 
         // ADC + charging

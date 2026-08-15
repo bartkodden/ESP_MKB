@@ -151,6 +151,10 @@ void buttonui_refresh(void) {
     for (uint8_t i = 0; i < 8; i++) {
         btn_slot_t *s = &s_slots[i];
         if (!s->btn) continue;
+        if (!lv_obj_is_valid(s->btn)) {
+            s->btn = s->icon_lbl = s->name_lbl = nullptr;
+            continue;
+        }
 
         const char *icon_str = mappings[i].icon;
         const char *name_str = mappings[i].name;
@@ -214,7 +218,18 @@ void buttonui_refresh(void) {
 }
 
 void buttonui_set_pressed(uint8_t index, bool pressed) {
-    if (index >= 8 || !s_slots[index].btn) return;
+    if (index >= 8) return;
+    if (!s_slots[index].btn) return;
+
+    // Verify the object is still valid before touching it
+    if (!lv_obj_is_valid(s_slots[index].btn)) {
+        ESP_LOGW(TAG, "Slot %d btn is invalid — clearing", index);
+        s_slots[index].btn      = nullptr;
+        s_slots[index].icon_lbl = nullptr;
+        s_slots[index].name_lbl = nullptr;
+        return;
+    }
+
     if (pressed) {
         lv_obj_add_state(s_slots[index].btn, LV_STATE_PRESSED);
     } else {

@@ -32,8 +32,10 @@ void update_ble_battery_level(uint8_t level);
 void send_consumer_key(uint16_t key_code);
 void send_keyboard_key(uint8_t key_code, uint8_t modifier = 0);
 void update_volume(uint8_t new_volume);
-void start_mcs_scanning(void);
 void handle_ble_display_events();
+void start_mcs_scanning(void);
+void start_ble_advertising(void);
+void check_mcs_discovery(void);
 
 // Event handlers
 void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param);
@@ -45,6 +47,5 @@ void gatts_profile_bs_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t ga
 // Helper functions
 void setup_service(esp_gatt_if_t gatts_if, uint8_t profile_id);
 void add_characteristic(esp_gatt_if_t gatts_if, uint8_t profile_id, uint8_t char_index);
-void check_mcs_discovery(void);
 
 #endif // BLUETOOTHFUNCTIONS_H

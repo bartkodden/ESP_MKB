@@ -163,14 +163,14 @@ static bool execute_button_command(char key) {
         // Consumer control (media keys)
         if ((cmd >= 176 && cmd <= 188) || cmd == 205 || cmd == 206 || 
             cmd == 226 || cmd == 233 || cmd == 234) {
-            ESP_LOGI(TAG, "→ CONSUMER key: 0x%04X", cmd);
+            //ESP_LOGI(TAG, "→ CONSUMER key: 0x%04X", cmd);
             send_consumer_key(cmd);
             return true;
         }
         
         // Regular keyboard keys
         if (cmd >= 4 && cmd <= 101) {
-            ESP_LOGI(TAG, "→ KEYBOARD key: 0x%02X", cmd);
+            //ESP_LOGI(TAG, "→ KEYBOARD key: 0x%02X", cmd);
             send_keyboard_key(cmd, 0);
             return true;
         }
@@ -178,7 +178,7 @@ static bool execute_button_command(char key) {
         // Modifier keys
         if (cmd >= 224 && cmd <= 231) {
             uint8_t modifier = 1 << (cmd - 224);
-            ESP_LOGI(TAG, "→ MODIFIER: 0x%02X", modifier);
+            //ESP_LOGI(TAG, "→ MODIFIER: 0x%02X", modifier);
             send_keyboard_key(0, modifier);
             return true;
         }
@@ -321,7 +321,7 @@ static void handle_navigation_keys(char key) {
         case 'l':  // Utility
             previousButtonSet();
             update_buttonset_label();
-            active_theme_index = next_theme(active_theme_index);
+            //active_theme_index = next_theme(active_theme_index);
             break;
             
         default:

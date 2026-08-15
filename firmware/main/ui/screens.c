@@ -169,7 +169,9 @@ void create_screen_main() {
                     lv_obj_remove_flag(obj, LV_OBJ_FLAG_ADV_HITTEST|LV_OBJ_FLAG_CLICK_FOCUSABLE|LV_OBJ_FLAG_GESTURE_BUBBLE|LV_OBJ_FLAG_PRESS_LOCK|LV_OBJ_FLAG_SCROLLABLE|LV_OBJ_FLAG_SCROLL_CHAIN_HOR|LV_OBJ_FLAG_SCROLL_CHAIN_VER|LV_OBJ_FLAG_SCROLL_ELASTIC|LV_OBJ_FLAG_SCROLL_MOMENTUM|LV_OBJ_FLAG_SCROLL_WITH_ARROW|LV_OBJ_FLAG_SNAPPABLE);
                 }
                 {
+                    // wifiicon
                     lv_obj_t *obj = lv_image_create(parent_obj);
+                    objects.wifiicon = obj;
                     lv_obj_set_pos(obj, 180, LV_PCT(15));
                     lv_obj_set_size(obj, LV_SIZE_CONTENT, LV_PCT(75));
                     lv_image_set_src(obj, &img_wifi_off);

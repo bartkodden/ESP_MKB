@@ -122,7 +122,7 @@ static void force_disconnect_cleanup(void)
     static const uint8_t zero_bda[6] = {0};
     
     if (mcs_gattc_if != ESP_GATT_IF_NONE && memcmp(server_bda, zero_bda, 6) != 0) {
-        esp_ble_gattc_close(mcs_gattc_if, 0);
+        esp_ble_gattc_close(mcs_gattc_if, mcs_conn_id);
         vTaskDelay(pdMS_TO_TICKS(500));
     }
     
@@ -275,12 +275,12 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp
                 mcs_conn_id = param->open.conn_id;
                 is_connected = true;
                 last_notify_time = esp_timer_get_time() / 1000;
-                
-                esp_ble_gattc_send_mtu_req(gattc_if, 0);
+                vTaskDelay(pdMS_TO_TICKS(500));
+                esp_ble_gattc_send_mtu_req(gattc_if, mcs_conn_id);
                 vTaskDelay(pdMS_TO_TICKS(500));
                 
                 ESP_LOGI(TAG, "Searching services...");
-                esp_ble_gattc_search_service(gattc_if, 0, NULL);  // Search all services
+                esp_ble_gattc_search_service(gattc_if, mcs_conn_id, NULL);  // Search all services
             } else {
                 ESP_LOGE(TAG, "Connect failed: %d", param->open.status);
                 is_connected = false;
@@ -315,7 +315,7 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp
         if (mcs_service_start_handle == 0 && vcs_service_start_handle == 0) {
             ESP_LOGW(TAG, "No services found - retrying...");
             vTaskDelay(pdMS_TO_TICKS(2000));
-            esp_ble_gattc_search_service(gattc_if, 0, NULL);
+            esp_ble_gattc_search_service(gattc_if, mcs_conn_id, NULL);
             break;
         }
         
@@ -325,14 +325,14 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp
         if (mcs_service_start_handle > 0) {
             uint16_t count = 0;
             esp_gatt_status_t status = esp_ble_gattc_get_attr_count(
-                gattc_if, 0, ESP_GATT_DB_CHARACTERISTIC,
+                gattc_if, mcs_conn_id, ESP_GATT_DB_CHARACTERISTIC,
                 mcs_service_start_handle, mcs_service_end_handle, 0, &count);
                 
             if (status == ESP_GATT_OK && count > 0) {
                 esp_gattc_char_elem_t *chars = (esp_gattc_char_elem_t*)malloc(sizeof(esp_gattc_char_elem_t) * count);
                 
                 if (chars) {
-                    status = esp_ble_gattc_get_all_char(gattc_if, 0,
+                    status = esp_ble_gattc_get_all_char(gattc_if, mcs_conn_id,
                                                        mcs_service_start_handle, mcs_service_end_handle,
                                                        chars, &count, 0);
                     
@@ -355,7 +355,7 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp
                             else if (uuid == TRACK_DURATION_UUID) {
                                 track_duration_handle = chars[i].char_handle;
                                 ESP_LOGI(TAG, "  ->Track Duration: %d", track_duration_handle);
-                                esp_ble_gattc_register_for_notify(gattc_if, server_bda, track_duration_handle);
+                                //esp_ble_gattc_register_for_notify(gattc_if, server_bda, track_duration_handle);
                             }
                             else if (uuid == TRACK_POSITION_UUID) {
                                 track_position_handle = chars[i].char_handle;
@@ -387,14 +387,14 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp
         if (vcs_service_start_handle > 0) {
             uint16_t count = 0;
             esp_gatt_status_t status = esp_ble_gattc_get_attr_count(
-                gattc_if, 0, ESP_GATT_DB_CHARACTERISTIC,
+                gattc_if, mcs_conn_id, ESP_GATT_DB_CHARACTERISTIC,
                 vcs_service_start_handle, vcs_service_end_handle, 0, &count);
                 
             if (status == ESP_GATT_OK && count > 0) {
                 esp_gattc_char_elem_t *chars = (esp_gattc_char_elem_t*)malloc(sizeof(esp_gattc_char_elem_t) * count);
                 
                 if (chars) {
-                    status = esp_ble_gattc_get_all_char(gattc_if, 0,
+                    status = esp_ble_gattc_get_all_char(gattc_if, mcs_conn_id,
                                                        vcs_service_start_handle, vcs_service_end_handle,
                                                        chars, &count, 0);
                     
@@ -427,12 +427,12 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp
     case ESP_GATTC_REG_FOR_NOTIFY_EVT: {
         ESP_LOGD(TAG, "Subscribed: %d", param->reg_for_notify.handle);
         
-        esp_ble_gattc_read_char(gattc_if, 0, param->reg_for_notify.handle, ESP_GATT_AUTH_REQ_NONE);
+        esp_ble_gattc_read_char(gattc_if, mcs_conn_id, param->reg_for_notify.handle, ESP_GATT_AUTH_REQ_NONE);
         
         uint16_t cccd_handle = param->reg_for_notify.handle + 1;
         uint8_t notify_en[2] = {0x01, 0x00};
         
-        esp_ble_gattc_write_char_descr(gattc_if, 0, cccd_handle, sizeof(notify_en), notify_en,
+        esp_ble_gattc_write_char_descr(gattc_if, mcs_conn_id, cccd_handle, sizeof(notify_en), notify_en,
                                        ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
         break;
     }
@@ -448,22 +448,49 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp
 
     case ESP_GATTC_NOTIFY_EVT:
         last_notify_time = esp_timer_get_time() / 1000;
-        
+
         if (param->notify.handle == media_state_handle && param->notify.value_len >= 1) {
             update_media_state(param->notify.value[0]);
-        } 
+        }
         else if (param->notify.handle == track_title_handle) {
             update_track_title((char*)param->notify.value, param->notify.value_len);
         }
         else if (param->notify.handle == track_duration_handle && param->notify.value_len >= 4) {
-            uint32_t duration = param->notify.value[0] | (param->notify.value[1] << 8) | 
-                               (param->notify.value[2] << 16) | (param->notify.value[3] << 24);
+            uint32_t duration = param->notify.value[0] | (param->notify.value[1] << 8) |
+                            (param->notify.value[2] << 16) | (param->notify.value[3] << 24);
             update_track_duration(duration);
         }
         else if (param->notify.handle == track_position_handle && param->notify.value_len >= 4) {
-            uint32_t pos = param->notify.value[0] | (param->notify.value[1] << 8) | 
-                          (param->notify.value[2] << 16) | (param->notify.value[3] << 24);
-            update_track_position(pos);
+            uint32_t pos_sec = param->notify.value[0] | (param->notify.value[1] << 8) |
+                            (param->notify.value[2] << 16) | (param->notify.value[3] << 24);
+
+            static uint32_t last_pos_notify_ms = 0;
+            uint32_t now_ms = esp_timer_get_time() / 1000;
+            bool is_first   = (last_pos_notify_ms == 0);
+
+            uint32_t elapsed_ms  = now_ms - last_pos_notify_ms;
+            uint32_t estimated   = client_track_position +
+                                (is_playing ? elapsed_ms / 1000 : 0);
+            bool is_seek = !is_first &&
+                        (abs((int32_t)pos_sec - (int32_t)estimated) > 3);
+
+            bool throttle_elapsed = (now_ms - last_pos_notify_ms) >= 5000;
+
+            if (is_first || is_seek || throttle_elapsed) {
+                last_pos_notify_ms = now_ms;
+
+                client_track_position = pos_sec;
+                if (is_playing) {
+                    playback_start_time_ms = now_ms - (pos_sec * 1000);
+                }
+
+                if (is_seek) {
+                    ESP_LOGI(TAG, "Seek: %lu -> %lu sec", estimated, pos_sec);
+                } else {
+                    ESP_LOGI(TAG, "Position synced: %lu -> %lu sec",
+                            estimated, pos_sec);
+                }
+            }
         }
         break;
         
@@ -506,7 +533,7 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp
                         
                         if (c < ALBUM_ART_CHUNK_COUNT - 1 && album_chunk_handles[c + 1] != 0) {
                             vTaskDelay(pdMS_TO_TICKS(50));
-                            esp_ble_gattc_read_char(mcs_gattc_if, 0, album_chunk_handles[c + 1], ESP_GATT_AUTH_REQ_NONE);
+                            esp_ble_gattc_read_char(mcs_gattc_if, mcs_conn_id, album_chunk_handles[c + 1], ESP_GATT_AUTH_REQ_NONE);
                         } else {
                             ESP_LOGI(TAG, "Album: %d bytes", album_art_received);
                             album_art_valid = true;
@@ -560,17 +587,17 @@ void mcs_client_init(void)
     ESP_LOGI(TAG, "Ready");
 }
 
-void mcs_use_existing_connection(uint16_t conn_id, esp_bd_addr_t bda)
-{
-    mcs_conn_id = conn_id;
-    memcpy(server_bda, bda, sizeof(esp_bd_addr_t));
-    using_shared_connection = true;
+// void mcs_use_existing_connection(uint16_t conn_id, esp_bd_addr_t bda)
+// {
+//     mcs_conn_id = conn_id;
+//     memcpy(server_bda, bda, sizeof(esp_bd_addr_t));
+//     using_shared_connection = true;
     
-    if (mcs_gattc_if != ESP_GATT_IF_NONE) {
-        ESP_LOGI(TAG, "Searching MCS & VCS services...");
-        esp_ble_gattc_search_service(mcs_gattc_if, 0, NULL);
-    }
-}
+//     if (mcs_gattc_if != ESP_GATT_IF_NONE) {
+//         ESP_LOGI(TAG, "Searching MCS & VCS services...");
+//         esp_ble_gattc_search_service(mcs_gattc_if, mcs_conn_id, NULL);
+//     }
+// }
 
 void mcs_set_volume(uint8_t volume_percent)
 {
@@ -582,7 +609,7 @@ void mcs_set_volume(uint8_t volume_percent)
     
     if (target_handle != 0) {
         ESP_LOGI(TAG, "Setting volume: %d%% (handle: %d)", vol, target_handle);
-        esp_ble_gattc_write_char(mcs_gattc_if, 0, target_handle, 1, &vol, 
+        esp_ble_gattc_write_char(mcs_gattc_if, mcs_conn_id, target_handle, 1, &vol, 
                                 ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
     } else {
         ESP_LOGW(TAG, "No volume handle available");
@@ -597,7 +624,7 @@ void mcs_set_microphone(uint8_t mic_percent)
     
     if (microphone_handle != 0) {
         ESP_LOGI(TAG, "Setting microphone: %d%%", mic);
-        esp_ble_gattc_write_char(mcs_gattc_if, 0, microphone_handle, 1, &mic, 
+        esp_ble_gattc_write_char(mcs_gattc_if, mcs_conn_id, microphone_handle, 1, &mic, 
                                 ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
     }
 }
@@ -625,7 +652,7 @@ void mcs_fetch_album_art(void)
         album_art_received = 0;
         album_art_valid = false;
         
-        esp_ble_gattc_read_char(mcs_gattc_if, 0, album_chunk_handles[0], ESP_GATT_AUTH_REQ_NONE);
+        esp_ble_gattc_read_char(mcs_gattc_if, mcs_conn_id, album_chunk_handles[0], ESP_GATT_AUTH_REQ_NONE);
     }
 }
 
@@ -665,30 +692,33 @@ void mcs_handle_scan_result(esp_ble_gap_cb_param_t *param)
     }
     
     if (!found_mcs) return;
-    
+
     extern esp_bd_addr_t hid_connected_device;
     extern bool hid_device_connected;
-    
+
     if (!hid_device_connected) return;
     if (memcmp(param->scan_rst.bda, hid_connected_device, 6) != 0) return;
-    
+
     int64_t now = esp_timer_get_time() / 1000;
-    if (memcmp(param->scan_rst.bda, last_attempt_bda, 6) == 0 && (now - last_attempt_time) < 10000) {
-        return;
-    }
-    
+    if (memcmp(param->scan_rst.bda, last_attempt_bda, 6) == 0 &&
+        (now - last_attempt_time) < 10000) return;
+
+    // ── Set flags FIRST so subsequent scan callbacks return early ──────────────
+    connection_in_progress = true;    // ← move to BEFORE stop_scanning
+    is_scanning = false;
+
+    esp_ble_gap_stop_scanning();      // async — callbacks still fire for ~500ms
+                                    // but now caught by the guard at top
+
     ESP_LOGI(TAG, "Found MCS");
     ESP_LOG_BUFFER_HEX(TAG, param->scan_rst.bda, 6);
-    
+
     memcpy(last_attempt_bda, param->scan_rst.bda, 6);
     last_attempt_time = now;
-    
-    esp_ble_gap_stop_scanning();
-    is_scanning = false;
-    connection_in_progress = true;
-    
+
     memcpy(server_bda, param->scan_rst.bda, sizeof(esp_bd_addr_t));
-    esp_ble_gattc_open(mcs_gattc_if, server_bda, param->scan_rst.ble_addr_type, true);
+    esp_ble_gattc_open(mcs_gattc_if, server_bda,
+                    param->scan_rst.ble_addr_type, true);
 }
 
 void mcs_process_ui_updates(void)
@@ -786,3 +816,5 @@ bool mcs_is_album_transfer_in_progress(void)
 {
     return album_transfer_in_progress;
 }
+
+bool mcs_is_scanning(void) { return is_scanning; }

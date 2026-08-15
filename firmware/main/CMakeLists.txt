@@ -18,7 +18,6 @@ set(MI_CODEPOINTS      "${COMPONENT_SRCDIR}/scripts/MaterialIcons-Regular.codepo
 set(BUTTONS_JSON       "${COMPONENT_SRCDIR}/buttons.json")
 set(MENU_JSON          "${COMPONENT_SRCDIR}/menu.json")
 set(MI_FONT_C          "${COMPONENT_SRCDIR}/material_icons_used_24.c")
-set(MI_FONT_BIN        "${COMPONENT_SRCDIR}/data/icons/material_icons_used_24.bin")
 
 # Guard: add_custom_command is not available during ESP-IDF script mode
 # (dependency resolution phase). Only register build steps during actual build.
@@ -26,7 +25,6 @@ if(NOT CMAKE_SCRIPT_MODE_FILE)
     add_custom_command(
         OUTPUT
             ${MI_FONT_C}
-            ${MI_FONT_BIN}
         COMMAND
             ${Python3_EXECUTABLE} ${GEN_ICONS_SCRIPT}
         DEPENDS
@@ -41,7 +39,7 @@ if(NOT CMAKE_SCRIPT_MODE_FILE)
     )
 
     add_custom_target(generate_mi_font
-        DEPENDS ${MI_FONT_C} ${MI_FONT_BIN}
+        DEPENDS ${MI_FONT_C}
     )
 endif()
 
@@ -59,17 +57,18 @@ idf_component_register(
         "iconManager.cpp"
         "material_icons_used_24.c"
         "buttonUI.cpp"
-        "iconManager.cpp"
+        "webServer.cpp"
+        "wifiManager.cpp"
         ${UI_C_SOURCES}
         ${UI_CPP_SOURCES}
     INCLUDE_DIRS
         "."
         "ui"
     EMBED_TXTFILES
-        "buttons.json"          # factory defaults only
+        "buttons.json"
         "menu.json"
     EMBED_FILES
-        ${EMBEDDED_IMAGES}      # now only truly static assets
+        ${EMBEDDED_IMAGES}
     REQUIRES
         json
         joltwallet__littlefs
@@ -83,8 +82,12 @@ idf_component_register(
         espressif__arduino-esp32
         lvgl__lvgl
         espressif__esp_lvgl_port
-        ESPAsyncWebServer
-        AsyncTCP
+        esp_wifi
+        esp_netif
+        esp_event 
+        esp_http_server
+        esp32async__asynctcp
+        esp32async__espasyncwebserver
 )
 
 # ─── Font must be generated before compiling material_icons_used_24.c ─────────

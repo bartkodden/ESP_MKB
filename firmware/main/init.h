@@ -88,7 +88,7 @@
 
 // Sleep
 #define uS_TO_S_FACTOR 1000000
-#define awakeTime  30
+extern uint32_t awakeTime;
 
 // I2C
 #define I2C_FREQ_HZ             100000

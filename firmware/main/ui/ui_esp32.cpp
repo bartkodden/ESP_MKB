@@ -49,7 +49,6 @@ extern "C" esp_err_t ui_init_display() {
     lv_display_t *disp = lv_display_create(240, 280);
     lv_display_set_flush_cb(disp, tft_flush);
     lv_display_set_buffers(disp, buf1, buf2, buf_size, LV_DISPLAY_RENDER_MODE_PARTIAL);
-
     return ESP_OK;
 }
 

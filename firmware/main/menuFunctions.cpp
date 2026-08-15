@@ -1,27 +1,11 @@
 #include "menuFunctions.h"
-
-/*
-Menu Structure:
-1 - Bluetooth (submenu)
-  1.1 - Turn on/off (toggle)
-  1.2 - Pairing mode (go in pairing loop)
-  1.3 - Back (go back to main menu)
-2 - WiFi (submenu)
-  2.1 - Turn On/Off (toggle)
-  2.2 - WiFi Mode (AP/Station)
-  2.3 - WiFi SSID (input)
-  2.4 - WiFi Password (input)
-  2.5 - Back (go back to main menu)
-3 - Display (submenu)
-  3.1 - Brightness (Low, Medium, High)
-  3.2 - Color (Red, Green, Blue, White, Yellow, Cyan, Magenta)
-  3.3 - Back (go back to main menu)
-4 - System (submenu)
-  4.1 - Reset
-  4.2 - Update
-  4.3 - Back (go back to main menu)
-5 - Exit (exit the menu)
-*/
+extern esp_err_t wifimanager_connect(void);
+extern esp_err_t wifimanager_stop(void);
+cJSON *s_menu_root = nullptr;
+extern uint32_t active_theme_index;
+extern "C" uint32_t next_theme(uint32_t active_theme_index);
+extern "C" void change_color_theme(uint32_t theme_index);
+extern void buttonui_refresh(void);
 
 // ============================================================================
 // MENU PARSING
@@ -162,4 +146,99 @@ void updateSystem() {
     tft.setCursor(10, 120);
     tft.println("updating...");
     // TODO: Add OTA update logic here
+}
+
+static cJSON* find_menu_item(cJSON *arr, const char *id) {
+    if (!arr) return nullptr;
+    int n = cJSON_GetArraySize(arr);
+    for (int i = 0; i < n; i++) {
+        cJSON *item = cJSON_GetArrayItem(arr, i);
+        cJSON *item_id = cJSON_GetObjectItem(item, "id");
+        if (item_id && strcmp(item_id->valuestring, id) == 0) return item;
+
+        cJSON *sub = cJSON_GetObjectItem(item, "submenu");
+        if (sub) {
+            cJSON *found = find_menu_item(sub, id);
+            if (found) return found;
+        }
+    }
+    return nullptr;
+}
+
+// ── Public: read value by id ──────────────────────────────────────────────────
+const char* getMenuValue(const char *id) {
+    if (!s_menu_root) return nullptr;
+    cJSON *arr  = cJSON_GetObjectItem(s_menu_root, "menu");
+    cJSON *item = find_menu_item(arr, id);
+    if (!item) return nullptr;
+    cJSON *val  = cJSON_GetObjectItem(item, "value");
+    return val ? val->valuestring : nullptr;
+}
+
+// ── Public: save value by id → write back to LittleFS ────────────────────────
+bool saveMenuValue(const char *id, const char *value) {
+    if (!s_menu_root) return false;
+    cJSON *arr  = cJSON_GetObjectItem(s_menu_root, "menu");
+    cJSON *item = find_menu_item(arr, id);
+    if (!item) return false;
+
+    // Update or create the value field
+    cJSON *val = cJSON_GetObjectItem(item, "value");
+    if (val) {
+        cJSON_SetValuestring(val, value);
+    } else {
+        cJSON_AddStringToObject(item, "value", value);
+    }
+
+    // Write back to LittleFS
+    char *out = cJSON_PrintUnformatted(s_menu_root);
+    if (!out) return false;
+
+    FILE *f = fopen("/storage/menu.json", "w");
+    if (f) {
+        fputs(out, f);
+        fclose(f);
+        ESP_LOGI("MENU", "Saved %s = %s", id, value);
+    }
+    cJSON_free(out);
+
+    // Apply the change immediately
+    applyMenuValue(id, value);
+    return true;
+}
+
+// ── Public: apply a value change at runtime ───────────────────────────────────
+void applyMenuValue(const char *id, const char *value) {
+    // WiFi on/off
+    if (strcmp(id, "3.1") == 0) {
+        if (strcmp(value, "On") == 0)  wifimanager_connect();
+        else                           wifimanager_stop();
+    }
+    // WiFi connect action
+    else if (strcmp(id, "3.5") == 0) {
+        wifimanager_connect();
+    }
+    // BT advertise
+    else if (strcmp(id, "2.2") == 0) {
+        extern void start_ble_advertising(void);
+        start_ble_advertising();
+    }
+    // Theme
+    else if (strcmp(id, "4.2") == 0) {
+        const char *themes[] = {"red", "green", "blue", "dark", "pink"};
+        for (int i = 0; i < 5; i++) {
+            if (strcmp(value, themes[i]) == 0) {
+                active_theme_index = i;
+                change_color_theme(i);    // apply directly, no cycling needed
+                buttonui_refresh();       // update label colors
+                break;
+            }
+        }
+    }
+    // Sleep timeout
+    else if (strcmp(id, "5.1") == 0) {
+        // TODO: awakeTime is currently a #define in init.h
+        // Change to: extern uint32_t awakeTime; in init.h to make it writable
+        ESP_LOGI("MENU", "Sleep timeout changed to %s (not yet applied)", value);
+    }
 }
