@@ -16,40 +16,41 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v5        # ← v5 uses Node.js 24
+      uses: actions/checkout@v5
       with:
         submodules: 'recursive'
         fetch-depth: 0
 
     - name: Free up disk space
       run: |
-        sudo rm -rf /usr/share/dotnet
-        sudo rm -rf /opt/ghc
-        sudo rm -rf "/usr/local/share/boost"
-        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+        sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/boost "$AGENT_TOOLSDIRECTORY"
 
-    # Docker login removed — was causing "Username and password required" error
-    # when secrets aren't set. Not needed for public ESP-IDF image.
+    - name: Install Node.js and lv_font_conv
+      run: |
+        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+        sudo apt-get install -y nodejs
+        npm install -g lv_font_conv
+        lv_font_conv --version
 
-    - name: Generate icons font subset
+    - name: Generate menu.json (AP mode for CI)
+      run: python3 firmware/main/scripts/gen_menu.py --ap
+
+    - name: Generate Material Icons font subset
       run: |
         cd firmware/main/scripts
-        npm install -g lv_font_conv
-        python3 gen_icons.py --no-font  # generate header + JS only, skip font (no TTF in CI)
-      continue-on-error: true
+        python3 gen_icons.py
+        ls -lh ../material_icons_used_24.c
 
     - name: Setup ESP-IDF and Build
-      uses: espressif/esp-idf-ci-action@v1
+      uses: espressif/esp-idf-ci-action@v2
       with:
         esp_idf_version: v5.4.3
         target: esp32
         path: 'firmware'
-        command: >
-          idf.py build
+        command: idf.py build
 
     - name: Fix Build Directory Permissions
-      run: |
-        sudo chown -R runner:runner firmware/build || true
+      run: sudo chown -R runner:runner firmware/build || true
 
     - name: Generate Build Info
       working-directory: firmware/build
@@ -60,10 +61,10 @@ jobs:
         echo "Branch: ${{ github.ref_name }}" >> build-info.txt
         echo "" >> build-info.txt
         echo "## Binary Files:" >> build-info.txt
-        ls -lh *.bin >> build-info.txt 2>/dev/null || echo "No .bin files found" >> build-info.txt
+        ls -lh *.bin >> build-info.txt 2>/dev/null || echo "No .bin files found"
         echo "" >> build-info.txt
         echo "## Checksums:" >> build-info.txt
-        sha256sum *.bin 2>/dev/null | tee firmware-checksums.txt || echo "No binaries to checksum"
+        sha256sum *.bin 2>/dev/null | tee firmware-checksums.txt || echo "No binaries"
 
     - name: Upload Firmware Binaries
       uses: actions/upload-artifact@v4
