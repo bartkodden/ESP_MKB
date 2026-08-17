@@ -42,7 +42,7 @@ jobs:
         ls -lh ../material_icons_used_24.c
 
     - name: Setup ESP-IDF and Build
-      uses: espressif/esp-idf-ci-action@v2
+      uses: espressif/esp-idf-ci-action@v1
       with:
         esp_idf_version: v5.4.3
         target: esp32
