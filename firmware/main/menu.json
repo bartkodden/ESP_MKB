@@ -1,0 +1,75 @@
+{
+    "menu": [
+        {
+            "id": "1",
+            "name": "Keypad",
+            "type": "submenu",
+            "submenu": [
+                {"id": "1.1", "name": "LED color", "type": "select", "value": "Red",
+                 "options": ["Red", "Green", "Blue", "White", "Black", "Yellow", "Cyan", "Magenta"]},
+                {"id": "1.2", "name": "Preset", "type": "select", "value": "Gaming",
+                 "options": ["Gaming", "Office", "CAD", "Custom 1", "Custom 2", "Custom 3"]}
+            ]
+        },
+        {
+            "id": "2",
+            "name": "Bluetooth",
+            "type": "submenu",
+            "submenu": [
+                {"id": "2.1", "name": "Turn on/off", "type": "select", "value": "On",
+                 "options": ["Off", "On"]},
+                {"id": "2.2", "name": "Advertise", "type": "action"},
+                {"id": "2.3", "name": "Set name", "type": "input", "value": "ESP-MKB"}
+            ]
+        },
+        {
+            "id": "3",
+            "name": "WiFi",
+            "type": "submenu",
+            "submenu": [
+                {"id": "3.1", "name": "Turn on/off", "type": "select", "value": "On",
+                 "options": ["Off", "On"]},
+                {"id": "3.2", "name": "WiFi Mode", "type": "select", "value": "AP",
+                 "options": ["AP", "Client"]},
+                {"id": "3.3", "name": "WiFi SSID", "type": "input", "value": ""},
+                {"id": "3.4", "name": "WiFi Password", "type": "input", "value": ""},
+                {"id": "3.5", "name": "Connect", "type": "action"},
+                {"id": "3.6", "name": "Show conn info", "type": "action"}
+            ]
+        },
+        {
+            "id": "4",
+            "name": "Display",
+            "type": "submenu",
+            "submenu": [
+                {"id": "4.1", "name": "Brightness", "type": "select", "value": "High",
+                 "options": ["Low", "Medium", "High"]},
+                {"id": "4.2", "name": "Theme", "type": "select", "value": "blue",
+                 "options": ["red", "green", "blue", "dark", "pink"]}
+            ]
+        },
+        {
+            "id": "5",
+            "name": "System",
+            "type": "submenu",
+            "submenu": [
+                {"id": "5.1", "name": "Sleep timeout", "type": "select", "value": "1m",
+                 "options": ["15s", "30s", "1m", "2m", "3m"]},
+                {"id": "5.2", "name": "Battery select", "type": "select", "value": "ICR18650-26J",
+                 "options": ["ICR18650-26J", "C112VTE16P", "Custom"]},
+                {"id": "5.3", "name": "Battery mAh", "type": "input", "value": "2600"},
+                {"id": "5.4", "name": "Update", "type": "action"},
+                {"id": "5.5", "name": "Battery info", "type": "submenu", "submenu": [
+                    {"id": "5.5.1", "name": "Voltage",    "type": "info",
+                     "function": "bq27441Voltage",     "unit": "mV"},
+                    {"id": "5.5.2", "name": "Current",    "type": "info",
+                     "function": "bq27441Current",     "unit": "mA"},
+                    {"id": "5.5.3", "name": "Percentage", "type": "info",
+                     "function": "bq27441soc",         "unit": "%"},
+                    {"id": "5.5.4", "name": "Temperature","type": "info",
+                     "function": "bq27441Temperature", "unit": "C"}
+                ]}
+            ]
+        }
+    ]
+}

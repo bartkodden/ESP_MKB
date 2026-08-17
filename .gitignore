@@ -35,6 +35,3 @@ firmware/main/data/icons/material_icons_used_24.bin
 # Keep the folder structure
 !firmware/main/data/icons/.gitkeep
 !firmware/main/data/icons/custom/.gitkeep
-
-#hide settings
-firmware/main/menu.json
