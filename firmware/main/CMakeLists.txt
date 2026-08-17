@@ -91,14 +91,6 @@ idf_component_register(
         esp32async__espasyncwebserver
 )
 
-# ─── Build order dependencies ─────────────────────────────────────────────────
-# menu.json must exist before font generation (gen_icons.py scans it for icons)
-# Font must exist before compiling material_icons_used_24.c
-if(NOT CMAKE_SCRIPT_MODE_FILE)
-    add_dependencies(generate_mi_font)
-    add_dependencies(__idf_main generate_mi_font)
-endif()
-
 # ─── LittleFS partition image ─────────────────────────────────────────────────
 littlefs_create_partition_image(
     storage
