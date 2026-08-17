@@ -22,6 +22,7 @@ extern QueueHandle_t ble_display_queue;
 
 extern esp_bd_addr_t hid_connected_device;
 extern bool hid_device_connected;
+extern bool is_scanning;
 
 // Function declarations
 void clearAllBonds(void);

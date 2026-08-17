@@ -43,7 +43,6 @@ static esp_gatt_if_t mcs_gattc_if = ESP_GATT_IF_NONE;
 static uint16_t mcs_conn_id = 0;
 static esp_bd_addr_t server_bda;
 static bool is_connected = false;
-static bool is_scanning = false;
 static bool connection_in_progress = false;
 static bool using_shared_connection = false;
 static int64_t last_notify_time = 0;
@@ -208,8 +207,8 @@ static void update_media_state(uint8_t state)
     }
     
     if (state != last_logged_state) {
-        const char *state_str = (state == 0x01) ? "▶️ Playing" : 
-                               (state == 0x02) ? "⏸️ Paused" : "⏹️ Stopped";
+        const char *state_str = (state == 0x01) ? "Playing" : 
+                               (state == 0x02) ? "Paused" : "Stopped";
         ESP_LOGI(TAG, "%s", state_str);
         last_logged_state = state;
     }
@@ -253,322 +252,346 @@ static void update_track_duration(uint32_t duration_sec)
 // GATT CLIENT CALLBACK
 // ═══════════════════════════════════════════════════════════
 
-static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param)
+// ── State machine ─────────────────────────────────────────────────────────────
+typedef enum {
+    MCS_STATE_IDLE,
+    MCS_STATE_CONNECTING,
+    MCS_STATE_MTU,
+    MCS_STATE_DISCOVERING,
+    MCS_STATE_SUBSCRIBING,
+    MCS_STATE_READING_INITIAL,
+    MCS_STATE_READY,
+    MCS_STATE_DISCONNECTING,
+} mcs_state_t;
+
+static mcs_state_t s_state = MCS_STATE_IDLE;
+
+// Number of CCCD writes pending — we know when all subscriptions are done
+static int s_pending_subscriptions = 0;
+static int s_initial_reads_pending = 0;
+
+// ── Char discovery helpers ────────────────────────────────────────────────────
+// Stack-allocated — avoids heap alloc in callback
+#define MAX_CHARS 20
+static esp_gattc_char_elem_t s_char_buf[MAX_CHARS];
+
+static void discover_chars(esp_gatt_if_t gattc_if,
+                           uint16_t start, uint16_t end) {
+    uint16_t count = MAX_CHARS;
+    if (esp_ble_gattc_get_all_char(gattc_if, mcs_conn_id,
+                                   start, end,
+                                   s_char_buf, &count, 0) != ESP_GATT_OK) {
+        ESP_LOGW(TAG, "get_all_char failed");
+        return;
+    }
+
+    for (int i = 0; i < count; i++) {
+        if (s_char_buf[i].uuid.len != ESP_UUID_LEN_16) continue;
+        uint16_t uuid    = s_char_buf[i].uuid.uuid.uuid16;
+        uint16_t handle  = s_char_buf[i].char_handle;
+
+        if      (uuid == MEDIA_STATE_UUID && media_state_handle == 0)        media_state_handle    = handle;
+        else if (uuid == TRACK_TITLE_UUID && track_title_handle == 0)        track_title_handle    = handle;
+        else if (uuid == TRACK_DURATION_UUID && track_duration_handle == 0)  track_duration_handle = handle;
+        else if (uuid == TRACK_POSITION_UUID && track_position_handle == 0)  track_position_handle = handle;
+        else if (uuid == MCS_VOLUME_UUID && mcs_volume_handle == 0)          mcs_volume_handle     = handle;
+        else {
+            for (int c = 0; c < ALBUM_ART_CHUNK_COUNT; c++) {
+                if (uuid == ALBUM_CHUNK_UUIDS[c]) {
+                    album_chunk_handles[c] = handle;
+                    if (c == 0) ESP_LOGI(TAG, "  ->Album chunks found");
+                    break;
+                }
+            }
+        }
+
+        if (uuid == MEDIA_STATE_UUID || uuid == TRACK_TITLE_UUID) {
+            ESP_LOGI(TAG, "  ->%s: %d",
+                uuid == MEDIA_STATE_UUID ? "Media State" : "Track Title",
+                handle);
+        }
+    }
+}
+
+// Write CCCD = 0x0001 (notify) for a given char handle
+static void subscribe_notify(esp_gatt_if_t gattc_if, uint16_t char_handle) {
+    // First register with LVGL stack
+    esp_ble_gattc_register_for_notify(gattc_if, server_bda, char_handle);
+    // REG_FOR_NOTIFY_EVT will write the CCCD
+    s_pending_subscriptions++;
+}
+
+// ── Main callback ─────────────────────────────────────────────────────────────
+static void esp_gattc_cb(esp_gattc_cb_event_t event,
+                          esp_gatt_if_t gattc_if,
+                          esp_ble_gattc_cb_param_t *param)
 {
     switch (event) {
+
+    // ── Registration ──────────────────────────────────────────────────────────
     case ESP_GATTC_REG_EVT:
         if (param->reg.status == ESP_GATT_OK) {
             mcs_gattc_if = gattc_if;
+            s_state = MCS_STATE_IDLE;
             ESP_LOGI(TAG, "GATT Client registered");
         }
         break;
-        
+
+    // ── Connection ────────────────────────────────────────────────────────────
     case ESP_GATTC_OPEN_EVT:
         connection_in_progress = false;
-        
-        if (!using_shared_connection) {
-            is_scanning = false;
-            
-            if (param->open.status == ESP_GATT_OK) {
-                ESP_LOGI(TAG, "Connected");
-                
-                mcs_conn_id = param->open.conn_id;
-                is_connected = true;
-                last_notify_time = esp_timer_get_time() / 1000;
-                vTaskDelay(pdMS_TO_TICKS(500));
-                esp_ble_gattc_send_mtu_req(gattc_if, mcs_conn_id);
-                vTaskDelay(pdMS_TO_TICKS(500));
-                
-                ESP_LOGI(TAG, "Searching services...");
-                esp_ble_gattc_search_service(gattc_if, mcs_conn_id, NULL);  // Search all services
-            } else {
-                ESP_LOGE(TAG, "Connect failed: %d", param->open.status);
-                is_connected = false;
-            }
+
+        if (param->open.status == ESP_GATT_OK) {
+            mcs_conn_id      = param->open.conn_id;
+            is_connected     = true;
+            last_notify_time = esp_timer_get_time() / 1000;
+            s_state          = MCS_STATE_MTU;
+
+            ESP_LOGI(TAG, "Connected");
+            // No vTaskDelay — MTU request goes immediately
+            esp_ble_gattc_send_mtu_req(gattc_if, mcs_conn_id);
+        } else {
+            ESP_LOGE(TAG, "Connect failed: %d", param->open.status);
+            is_connected = false;
+            s_state      = MCS_STATE_IDLE;
         }
         break;
-        
+
+    // ── MTU ───────────────────────────────────────────────────────────────────
     case ESP_GATTC_CFG_MTU_EVT:
         if (param->cfg_mtu.status == ESP_GATT_OK) {
             ESP_LOGI(TAG, "MTU: %d", param->cfg_mtu.mtu);
         }
+        // Always proceed to discovery regardless of MTU result
+        s_state = MCS_STATE_DISCOVERING;
+        ESP_LOGI(TAG, "Searching services...");
+        esp_ble_gattc_search_service(gattc_if, mcs_conn_id, NULL);
         break;
-        
+
+    // ── Service discovery results ──────────────────────────────────────────────
     case ESP_GATTC_SEARCH_RES_EVT:
-        if (param->search_res.srvc_id.uuid.len == ESP_UUID_LEN_16) {
+        if (param->search_res.srvc_id.uuid.len != ESP_UUID_LEN_16) break;
+        {
             uint16_t uuid = param->search_res.srvc_id.uuid.uuid.uuid16;
-            
             if (uuid == MCS_SERVICE_UUID) {
                 mcs_service_start_handle = param->search_res.start_handle;
-                mcs_service_end_handle = param->search_res.end_handle;
+                mcs_service_end_handle   = param->search_res.end_handle;
                 ESP_LOGI(TAG, "✓ MCS Service found");
-            }
-            else if (uuid == VCS_SERVICE_UUID) {
+            } else if (uuid == VCS_SERVICE_UUID) {
                 vcs_service_start_handle = param->search_res.start_handle;
-                vcs_service_end_handle = param->search_res.end_handle;
+                vcs_service_end_handle   = param->search_res.end_handle;
                 ESP_LOGI(TAG, "✓ VCS Service found");
             }
         }
         break;
-        
-    case ESP_GATTC_SEARCH_CMPL_EVT: {
+
+    // ── Service discovery complete ────────────────────────────────────────────
+    case ESP_GATTC_SEARCH_CMPL_EVT:
         if (mcs_service_start_handle == 0 && vcs_service_start_handle == 0) {
-            ESP_LOGW(TAG, "No services found - retrying...");
-            vTaskDelay(pdMS_TO_TICKS(2000));
-            esp_ble_gattc_search_service(gattc_if, mcs_conn_id, NULL);
+            ESP_LOGW(TAG, "No services found — retry in main loop");
+            // Don't retry here — caller will handle reconnect
+            is_connected = false;
+            s_state      = MCS_STATE_IDLE;
             break;
         }
-        
+
         ESP_LOGI(TAG, "Discovering characteristics...");
-        
-        // Discover MCS characteristics
-        if (mcs_service_start_handle > 0) {
-            uint16_t count = 0;
-            esp_gatt_status_t status = esp_ble_gattc_get_attr_count(
-                gattc_if, mcs_conn_id, ESP_GATT_DB_CHARACTERISTIC,
-                mcs_service_start_handle, mcs_service_end_handle, 0, &count);
-                
-            if (status == ESP_GATT_OK && count > 0) {
-                esp_gattc_char_elem_t *chars = (esp_gattc_char_elem_t*)malloc(sizeof(esp_gattc_char_elem_t) * count);
-                
-                if (chars) {
-                    status = esp_ble_gattc_get_all_char(gattc_if, mcs_conn_id,
-                                                       mcs_service_start_handle, mcs_service_end_handle,
-                                                       chars, &count, 0);
-                    
-                    if (status == ESP_GATT_OK) {
-                        for (int i = 0; i < count; i++) {
-                            if (chars[i].uuid.len != ESP_UUID_LEN_16) continue;
-                            
-                            uint16_t uuid = chars[i].uuid.uuid.uuid16;
-                            
-                            if (uuid == MEDIA_STATE_UUID) {
-                                media_state_handle = chars[i].char_handle;
-                                ESP_LOGI(TAG, "  ->Media State: %d", media_state_handle);
-                                esp_ble_gattc_register_for_notify(gattc_if, server_bda, media_state_handle);
-                            } 
-                            else if (uuid == TRACK_TITLE_UUID) {
-                                track_title_handle = chars[i].char_handle;
-                                ESP_LOGI(TAG, "  ->Track Title: %d", track_title_handle);
-                                esp_ble_gattc_register_for_notify(gattc_if, server_bda, track_title_handle);
-                            }
-                            else if (uuid == TRACK_DURATION_UUID) {
-                                track_duration_handle = chars[i].char_handle;
-                                ESP_LOGI(TAG, "  ->Track Duration: %d", track_duration_handle);
-                                //esp_ble_gattc_register_for_notify(gattc_if, server_bda, track_duration_handle);
-                            }
-                            else if (uuid == TRACK_POSITION_UUID) {
-                                track_position_handle = chars[i].char_handle;
-                                ESP_LOGI(TAG, "  ->Track Position: %d", track_position_handle);
-                                esp_ble_gattc_register_for_notify(gattc_if, server_bda, track_position_handle);
-                            }
-                            else if (uuid == MCS_VOLUME_UUID) {
-                                mcs_volume_handle = chars[i].char_handle;
-                                ESP_LOGI(TAG, "  ->MCS Volume: %d", mcs_volume_handle);
-                            }
-                            else {
-                                for (int c = 0; c < ALBUM_ART_CHUNK_COUNT; c++) {
-                                    if (uuid == ALBUM_CHUNK_UUIDS[c]) {
-                                        album_chunk_handles[c] = chars[i].char_handle;
-                                        if (c == 0) ESP_LOGI(TAG, "  ->Album chunks found");
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    free(chars);
-                }
-            }
-        }
-        
-        // Discover VCS characteristics
+
+        if (mcs_service_start_handle > 0)
+            discover_chars(gattc_if,mcs_service_start_handle, mcs_service_end_handle);
+
         if (vcs_service_start_handle > 0) {
-            uint16_t count = 0;
-            esp_gatt_status_t status = esp_ble_gattc_get_attr_count(
-                gattc_if, mcs_conn_id, ESP_GATT_DB_CHARACTERISTIC,
-                vcs_service_start_handle, vcs_service_end_handle, 0, &count);
-                
-            if (status == ESP_GATT_OK && count > 0) {
-                esp_gattc_char_elem_t *chars = (esp_gattc_char_elem_t*)malloc(sizeof(esp_gattc_char_elem_t) * count);
-                
-                if (chars) {
-                    status = esp_ble_gattc_get_all_char(gattc_if, mcs_conn_id,
-                                                       vcs_service_start_handle, vcs_service_end_handle,
-                                                       chars, &count, 0);
-                    
-                    if (status == ESP_GATT_OK) {
-                        for (int i = 0; i < count; i++) {
-                            if (chars[i].uuid.len != ESP_UUID_LEN_16) continue;
-                            
-                            uint16_t uuid = chars[i].uuid.uuid.uuid16;
-                            
-                            if (uuid == VCS_VOLUME_STATE_UUID) {
-                                vcs_volume_handle = chars[i].char_handle;
-                                ESP_LOGI(TAG, "  ->VCS Volume: %d", vcs_volume_handle);
-                            }
-                            else if (uuid == MICROPHONE_UUID) {
-                                microphone_handle = chars[i].char_handle;
-                                ESP_LOGI(TAG, "  ->Microphone: %d", microphone_handle);
-                            }
-                        }
-                    }
-                    
-                    free(chars);
-                }
+            if (vcs_service_start_handle > mcs_service_end_handle ||  mcs_service_end_handle == 0) {
+                discover_chars(gattc_if, vcs_service_start_handle, vcs_service_end_handle);
             }
         }
-        
-        is_connected = true;
+        // Log discovered handles
+        if (media_state_handle)    ESP_LOGI(TAG, "  ->Media State: %d",    media_state_handle);
+        if (track_title_handle)    ESP_LOGI(TAG, "  ->Track Title: %d",    track_title_handle);
+        if (track_position_handle) ESP_LOGI(TAG, "  ->Track Position: %d", track_position_handle);
+        if (track_duration_handle) ESP_LOGI(TAG, "  ->Track Duration: %d", track_duration_handle);
+        if (mcs_volume_handle)     ESP_LOGI(TAG, "  ->MCS Volume: %d",     mcs_volume_handle);
+        if (vcs_volume_handle)     ESP_LOGI(TAG, "  ->VCS Volume: %d",     vcs_volume_handle);
+        if (microphone_handle)     ESP_LOGI(TAG, "  ->Microphone: %d",     microphone_handle);
+
+        // Subscribe: ONLY media_state and track_title
+        // Position and duration notifications intentionally excluded
+        // (they arrive every second and exhaust BT OSI heap)
+        s_pending_subscriptions = 0;
+        s_state = MCS_STATE_SUBSCRIBING;
+
+        if (media_state_handle)  subscribe_notify(gattc_if, media_state_handle);
+        if (track_title_handle)  subscribe_notify(gattc_if, track_title_handle);
         break;
-    }
-        
+
+    // ── CCCD write complete ───────────────────────────────────────────────────
     case ESP_GATTC_REG_FOR_NOTIFY_EVT: {
-        ESP_LOGD(TAG, "Subscribed: %d", param->reg_for_notify.handle);
-        
-        esp_ble_gattc_read_char(gattc_if, mcs_conn_id, param->reg_for_notify.handle, ESP_GATT_AUTH_REQ_NONE);
-        
-        uint16_t cccd_handle = param->reg_for_notify.handle + 1;
-        uint8_t notify_en[2] = {0x01, 0x00};
-        
-        esp_ble_gattc_write_char_descr(gattc_if, mcs_conn_id, cccd_handle, sizeof(notify_en), notify_en,
-                                       ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
+        if (param->reg_for_notify.status != ESP_GATT_OK) {
+            ESP_LOGW(TAG, "Notify reg failed: handle=%d",
+                     param->reg_for_notify.handle);
+        }
+        // Write CCCD descriptor to enable notifications on server side
+        uint16_t cccd  = param->reg_for_notify.handle + 1;
+        uint8_t  en[2] = {0x01, 0x00};
+        esp_ble_gattc_write_char_descr(gattc_if, mcs_conn_id, cccd,
+                                       sizeof(en), en,
+                                       ESP_GATT_WRITE_TYPE_RSP,
+                                       ESP_GATT_AUTH_REQ_NONE);
         break;
     }
 
+    // ── Write complete ────────────────────────────────────────────────────────
     case ESP_GATTC_WRITE_DESCR_EVT:
+        ESP_LOGD(TAG, "CCCD write OK: handle=%d", param->write.handle);
+
+        if (s_state == MCS_STATE_SUBSCRIBING) {
+            s_pending_subscriptions--;
+            if (s_pending_subscriptions <= 0) {
+                // All subscriptions done — do initial reads
+                s_state = MCS_STATE_READING_INITIAL;
+                s_initial_reads_pending = 0;
+
+                if (media_state_handle) {
+                    esp_ble_gattc_read_char(gattc_if, mcs_conn_id,
+                        media_state_handle, ESP_GATT_AUTH_REQ_NONE);
+                    s_initial_reads_pending++;
+                }
+                if (track_title_handle) {
+                    esp_ble_gattc_read_char(gattc_if, mcs_conn_id,
+                        track_title_handle, ESP_GATT_AUTH_REQ_NONE);
+                    s_initial_reads_pending++;
+                }
+                if (track_position_handle) {
+                    esp_ble_gattc_read_char(gattc_if, mcs_conn_id,
+                        track_position_handle, ESP_GATT_AUTH_REQ_NONE);
+                    s_initial_reads_pending++;
+                }
+                if (track_duration_handle) {
+                    esp_ble_gattc_read_char(gattc_if, mcs_conn_id,
+                        track_duration_handle, ESP_GATT_AUTH_REQ_NONE);
+                    s_initial_reads_pending++;
+                }
+            }
+        }
+        break;
+
     case ESP_GATTC_WRITE_CHAR_EVT:
         if (param->write.status == ESP_GATT_OK) {
             ESP_LOGI(TAG, "✓ Write OK: handle=%d", param->write.handle);
         } else {
-            ESP_LOGE(TAG, "✗ Write FAILED: handle=%d, status=%d", param->write.handle, param->write.status);
+            ESP_LOGE(TAG, "✗ Write FAILED: handle=%d status=%d",
+                     param->write.handle, param->write.status);
         }
         break;
 
+    // ── Notifications ─────────────────────────────────────────────────────────
     case ESP_GATTC_NOTIFY_EVT:
         last_notify_time = esp_timer_get_time() / 1000;
 
-        if (param->notify.handle == media_state_handle && param->notify.value_len >= 1) {
+        if (param->notify.handle == media_state_handle &&
+            param->notify.value_len >= 1) {
             update_media_state(param->notify.value[0]);
         }
         else if (param->notify.handle == track_title_handle) {
-            update_track_title((char*)param->notify.value, param->notify.value_len);
+            update_track_title((char*)param->notify.value,
+                               param->notify.value_len);
         }
-        else if (param->notify.handle == track_duration_handle && param->notify.value_len >= 4) {
-            uint32_t duration = param->notify.value[0] | (param->notify.value[1] << 8) |
-                            (param->notify.value[2] << 16) | (param->notify.value[3] << 24);
-            update_track_duration(duration);
-        }
-        else if (param->notify.handle == track_position_handle && param->notify.value_len >= 4) {
-            uint32_t pos_sec = param->notify.value[0] | (param->notify.value[1] << 8) |
-                            (param->notify.value[2] << 16) | (param->notify.value[3] << 24);
-
-            static uint32_t last_pos_notify_ms = 0;
-            uint32_t now_ms = esp_timer_get_time() / 1000;
-            bool is_first   = (last_pos_notify_ms == 0);
-
-            uint32_t elapsed_ms  = now_ms - last_pos_notify_ms;
-            uint32_t estimated   = client_track_position +
-                                (is_playing ? elapsed_ms / 1000 : 0);
-            bool is_seek = !is_first &&
-                        (abs((int32_t)pos_sec - (int32_t)estimated) > 3);
-
-            bool throttle_elapsed = (now_ms - last_pos_notify_ms) >= 5000;
-
-            if (is_first || is_seek || throttle_elapsed) {
-                last_pos_notify_ms = now_ms;
-
-                client_track_position = pos_sec;
-                if (is_playing) {
-                    playback_start_time_ms = now_ms - (pos_sec * 1000);
-                }
-
-                if (is_seek) {
-                    ESP_LOGI(TAG, "Seek: %lu -> %lu sec", estimated, pos_sec);
-                } else {
-                    ESP_LOGI(TAG, "Position synced: %lu -> %lu sec",
-                            estimated, pos_sec);
-                }
-            }
-        }
+        // Position and duration: no subscription → no notifications
+        // (removed to prevent 1/s BT OSI heap exhaustion)
         break;
-        
+
+    // ── Read responses ────────────────────────────────────────────────────────
     case ESP_GATTC_READ_CHAR_EVT:
-        if (param->read.status == ESP_GATT_OK) {
-            
-            if (param->read.handle == track_title_handle) {
-                update_track_title((char*)param->read.value, param->read.value_len);
-            } 
-            else if (param->read.handle == media_state_handle && param->read.value_len >= 1) {
-                update_media_state(param->read.value[0]);
-            }
-            else if (param->read.handle == track_duration_handle && param->read.value_len >= 4) {
-                uint32_t duration = param->read.value[0] | (param->read.value[1] << 8) | 
-                                   (param->read.value[2] << 16) | (param->read.value[3] << 24);
-                update_track_duration(duration);
-            }
-            else if (param->read.handle == track_position_handle && param->read.value_len >= 4) {
-                uint32_t pos = param->read.value[0] | (param->read.value[1] << 8) | 
-                              (param->read.value[2] << 16) | (param->read.value[3] << 24);
-                update_track_position(pos);
-            }
-            else {
-                // Album chunks
-                for (int c = 0; c < ALBUM_ART_CHUNK_COUNT; c++) {
-                    if (param->read.handle == album_chunk_handles[c]) {
-                        ESP_LOGD(TAG, "Chunk %d: %d bytes", c + 1, param->read.value_len);
-                        
-                        size_t offset = c * CHUNK_SIZE;
-                        size_t bytes_to_copy = (param->read.value_len > CHUNK_SIZE) ? CHUNK_SIZE : param->read.value_len;
-                        
-                        if (offset + bytes_to_copy > sizeof(client_album_art)) {
-                            bytes_to_copy = sizeof(client_album_art) - offset;
-                        }
-                        
-                        if (bytes_to_copy > 0) {
-                            memcpy(client_album_art + offset, param->read.value, bytes_to_copy);
-                            album_art_received += bytes_to_copy;
-                        }
-                        
-                        if (c < ALBUM_ART_CHUNK_COUNT - 1 && album_chunk_handles[c + 1] != 0) {
-                            vTaskDelay(pdMS_TO_TICKS(50));
-                            esp_ble_gattc_read_char(mcs_gattc_if, mcs_conn_id, album_chunk_handles[c + 1], ESP_GATT_AUTH_REQ_NONE);
-                        } else {
-                            ESP_LOGI(TAG, "Album: %d bytes", album_art_received);
-                            album_art_valid = true;
-                            album_transfer_in_progress = false;
-                            
-                            if (ui_update_queue) {
-                                ui_update_msg_t msg;
-                                msg.type = UI_UPDATE_ALBUM_ART;
-                                xQueueSend(ui_update_queue, &msg, 0);
-                            }
-                        }
-                        
-                        break;
+        if (param->read.status != ESP_GATT_OK) break;
+
+        if (param->read.handle == media_state_handle &&
+            param->read.value_len >= 1) {
+            update_media_state(param->read.value[0]);
+        }
+        else if (param->read.handle == track_title_handle) {
+            update_track_title((char*)param->read.value,
+                               param->read.value_len);
+        }
+        else if (param->read.handle == track_duration_handle &&
+                 param->read.value_len >= 4) {
+            uint32_t d = param->read.value[0]
+                       | (param->read.value[1] << 8)
+                       | (param->read.value[2] << 16)
+                       | (param->read.value[3] << 24);
+            update_track_duration(d);
+        }
+        else if (param->read.handle == track_position_handle &&
+                 param->read.value_len >= 4) {
+            uint32_t p = param->read.value[0]
+                       | (param->read.value[1] << 8)
+                       | (param->read.value[2] << 16)
+                       | (param->read.value[3] << 24);
+            update_track_position(p);
+        }
+        else {
+            // Album art chunks
+            for (int c = 0; c < ALBUM_ART_CHUNK_COUNT; c++) {
+                if (param->read.handle != album_chunk_handles[c]) continue;
+
+                size_t offset = c * CHUNK_SIZE;
+                size_t n = param->read.value_len < CHUNK_SIZE
+                           ? param->read.value_len : CHUNK_SIZE;
+                if (offset + n > sizeof(client_album_art))
+                    n = sizeof(client_album_art) - offset;
+                if (n > 0) {
+                    memcpy(client_album_art + offset, param->read.value, n);
+                    album_art_received += n;
+                }
+
+                // Chain: read next chunk or finish
+                if (c < ALBUM_ART_CHUNK_COUNT - 1 &&
+                    album_chunk_handles[c + 1] != 0) {
+                    // No vTaskDelay — next read fires immediately
+                    esp_ble_gattc_read_char(mcs_gattc_if, mcs_conn_id,
+                        album_chunk_handles[c + 1], ESP_GATT_AUTH_REQ_NONE);
+                } else {
+                    ESP_LOGI(TAG, "Album: %d bytes", album_art_received);
+                    album_art_valid              = true;
+                    album_transfer_in_progress   = false;
+
+                    if (ui_update_queue) {
+                        ui_update_msg_t msg = { .type = UI_UPDATE_ALBUM_ART };
+                        xQueueSend(ui_update_queue, &msg, 0);
                     }
                 }
+                break;
+            }
+        }
+
+        // Track initial reads completion → ready
+        if (s_state == MCS_STATE_READING_INITIAL) {
+            s_initial_reads_pending--;
+            if (s_initial_reads_pending <= 0) {
+                s_state = MCS_STATE_READY;
+                ESP_LOGI(TAG, "MCS ready");
             }
         }
         break;
-        
+
+    // ── Disconnection ─────────────────────────────────────────────────────────
     case ESP_GATTC_DISCONNECT_EVT:
         ESP_LOGI(TAG, "Disconnected");
+        s_state = MCS_STATE_IDLE;
         force_disconnect_cleanup();
-        
+
         strcpy(client_track_title, "No Media");
-        strcpy(client_artist, "Unknown");
-        strcpy(client_title, "Unknown");
+        strcpy(client_artist,      "Unknown");
+        strcpy(client_title,       "Unknown");
         album_art_valid = false;
-        is_playing = false;
-        
+        is_playing      = false;
+
         if (device_mode == MODE_MCS_ONLY) {
-            vTaskDelay(pdMS_TO_TICKS(5000));
-            esp_ble_gap_start_scanning(30);
+            // Don't vTaskDelay here — just set a flag
+            // main loop handles reconnect via start_mcs_scanning()
+            is_connected = false;
         }
         break;
-        
+
     default:
         break;
     }
@@ -703,12 +726,9 @@ void mcs_handle_scan_result(esp_ble_gap_cb_param_t *param)
     if (memcmp(param->scan_rst.bda, last_attempt_bda, 6) == 0 &&
         (now - last_attempt_time) < 10000) return;
 
-    // ── Set flags FIRST so subsequent scan callbacks return early ──────────────
-    connection_in_progress = true;    // ← move to BEFORE stop_scanning
-    is_scanning = false;
+    connection_in_progress = true;
 
-    esp_ble_gap_stop_scanning();      // async — callbacks still fire for ~500ms
-                                    // but now caught by the guard at top
+    esp_ble_gap_stop_scanning();
 
     ESP_LOGI(TAG, "Found MCS");
     ESP_LOG_BUFFER_HEX(TAG, param->scan_rst.bda, 6);
@@ -816,5 +836,3 @@ bool mcs_is_album_transfer_in_progress(void)
 {
     return album_transfer_in_progress;
 }
-
-bool mcs_is_scanning(void) { return is_scanning; }

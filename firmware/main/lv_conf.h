@@ -6,12 +6,10 @@
 #define LV_COLOR_16_SWAP 1
 
 // ── Memory ───────────────────────────────────────────────────────────────────
-// LVGL uses its own isolated memory pool
-// This pool lives in .bss and is never fragmented by BLE/WiFi/HTTP allocations
-#define LV_USE_STDLIB_MALLOC    LV_STDLIB_CLIB
-//#define LV_MEM_SIZE                  (48 * 1024U)
+#define LV_USE_STDLIB_MALLOC         LV_STDLIB_BUILTIN
+#define LV_MEM_SIZE                  (32 * 1024U)
 #define LV_DRAW_SW_GRAD_CACHE_DEF_SIZE  2048
-#define LV_DRAW_LAYER_SIMPLE_BUF_SIZE   (24 * 1024)
+#define LV_DRAW_LAYER_SIMPLE_BUF_SIZE   0
 
 // ── Display ──────────────────────────────────────────────────────────────────
 #define LV_HOR_RES_MAX 240
@@ -20,7 +18,9 @@
 // ── Animation ────────────────────────────────────────────────────────────────
 #define LV_USE_ANIM          1
 #define LV_ANIM_DEFAULT_TIME 200
-#define LV_DEF_REFR_PERIOD   33
+#define LV_DEF_REFR_PERIOD   100
+#define LV_SYSMON_PERF_PERIOD_MS    1000
+#define LV_DRAW_SW_DRAW_UNIT_CNT    1
 
 // ── Logging ──────────────────────────────────────────────────────────────────
 #define LV_USE_LOG 0

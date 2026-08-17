@@ -248,10 +248,11 @@ void app_main() {
 
     // ── MCS client ────────────────────────────────────────────────────────────
     update_loading_status("MCS...");
-    // if (device_mode == MODE_MCS_ONLY || device_mode == MODE_BOTH) {
-    //     ESP_LOGI(MAIN_TAG, "Initializing MCS client");
-    //     mcs_client_init();
-    // }
+    if (device_mode == MODE_MCS_ONLY || device_mode == MODE_BOTH) {
+        ESP_LOGI(MAIN_TAG, "Initializing MCS client");
+        mcs_client_init();
+        lvgl_tick();
+    }
 
     // ── Ready ─────────────────────────────────────────────────────────────────
     current_volume = 50;
@@ -337,7 +338,7 @@ void app_main() {
                     }
 
                     // Only restart scan if disconnected, BLE up, and not already scanning
-                    if (!mcs_connected && ble_conn && !mcs_is_scanning()) {
+                    if (!mcs_connected && ble_conn && !is_scanning) {
                         ESP_LOGI(MAIN_TAG, "Restarting MCS scan");
                         start_mcs_scanning();
                     }

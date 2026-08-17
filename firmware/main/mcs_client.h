@@ -13,8 +13,6 @@ extern "C" {
 // Initialize MCS client
 void mcs_client_init(void);
 
-bool mcs_is_scanning(void);
-
 // Use existing HID connection for MCS/VCS
 void mcs_use_existing_connection(uint16_t conn_id, esp_bd_addr_t bda);
 

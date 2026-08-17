@@ -6,14 +6,12 @@
 #include "ui/images.h"
 
 static const char *TAG = "BLE";
-static bool mcs_scan_started = false;
 QueueHandle_t ble_display_queue = NULL;
-static bool mcs_discovery_needed = false;
 static bool mcs_discovery_triggered = false;
 esp_bd_addr_t hid_connected_device = {0};
 bool hid_device_connected = false;
-static esp_bd_addr_t mcs_target_bda;
 extern QueueHandle_t ble_display_queue;
+bool is_scanning = false;
 
 
 // ============================================================================
@@ -279,14 +277,15 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
             
         // ADD MCS SCANNING EVENTS
         case ESP_GAP_BLE_SCAN_PARAM_SET_COMPLETE_EVT:
-            //ESP_LOGI(TAG, "MCS: Scan parameters set, starting scan...");
             esp_ble_gap_start_scanning(30);
             break;
             
         case ESP_GAP_BLE_SCAN_START_COMPLETE_EVT:
             if (param->scan_start_cmpl.status == ESP_BT_STATUS_SUCCESS) {
+                is_scanning = true;
                 ESP_LOGI(TAG, "MCS: Scanning for MCS server...");
             } else {
+                is_scanning = false;
                 ESP_LOGE(TAG, "MCS: Scan start failed, status %d", param->scan_start_cmpl.status);
             }
             break;
@@ -299,7 +298,7 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
             
         case ESP_GAP_BLE_SCAN_STOP_COMPLETE_EVT:
             if (param->scan_stop_cmpl.status == ESP_BT_STATUS_SUCCESS) {
-                ESP_LOGI(TAG, "MCS: Scan stopped");
+                is_scanning = false;
             }
             break;
             
@@ -380,18 +379,18 @@ void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
 }
 
 void start_mcs_scanning(void) {
-    ESP_LOGI(TAG, "Starting MCS scan...");
-    
-    // Stop any existing scan first
-    esp_ble_gap_stop_scanning();
-    vTaskDelay(pdMS_TO_TICKS(100));
+    //ESP_LOGI(TAG, "Starting MCS scan...");
+    if (is_scanning) {
+        esp_ble_gap_stop_scanning();
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
     
     static esp_ble_scan_params_t scan_params = {
         .scan_type          = BLE_SCAN_TYPE_PASSIVE,
         .own_addr_type      = BLE_ADDR_TYPE_PUBLIC,
         .scan_filter_policy = BLE_SCAN_FILTER_ALLOW_ALL,
-        .scan_interval      = 0xA0,   // 100ms interval (was 0x50 = 50ms)
-        .scan_window        = 0x18,   // 15ms window   (was 0x30 = 30ms)
+        .scan_interval      = 0xA0,
+        .scan_window        = 0x18,
         .scan_duplicate     = BLE_SCAN_DUPLICATE_ENABLE
     };
     

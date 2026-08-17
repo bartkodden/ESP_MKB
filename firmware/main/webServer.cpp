@@ -97,33 +97,27 @@ static esp_err_t handle_status(httpd_req_t *req) {
 static esp_err_t handle_file_get(httpd_req_t *req) {
     char path[64];
     uri_to_path(req->uri, "/api/files", path, sizeof(path));
+    ESP_LOGI(TAG, "GET: %s", path);
 
     struct stat st;
-    if (stat(path, &st) != 0) {
-        ESP_LOGW(TAG, "File not found: %s", path);
-        httpd_resp_send_404(req);
-        return ESP_FAIL;
-    }
+    if (stat(path, &st) != 0) { httpd_resp_send_404(req); return ESP_FAIL; }
 
     FILE *f = fopen(path, "rb");
-    if (!f) {
-        httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR,
-                            "Cannot open file");
-        return ESP_FAIL;
-    }
+    if (!f) { httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "open failed"); return ESP_FAIL; }
 
     httpd_resp_set_type(req, mime_type(path));
-    char buf[512];
+
+    char buf[256];
     size_t n;
     while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
         if (httpd_resp_send_chunk(req, buf, n) != ESP_OK) {
             fclose(f);
             return ESP_FAIL;
         }
+        vTaskDelay(pdMS_TO_TICKS(2));
     }
     fclose(f);
     httpd_resp_send_chunk(req, NULL, 0);
-    ESP_LOGI(TAG, "Served: %s (%lld bytes)", path, st.st_size);
     return ESP_OK;
 }
 

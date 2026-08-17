@@ -5,7 +5,7 @@ on:
     branches: [ main, develop ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:
 
 jobs:
   # ============================================
@@ -13,39 +13,44 @@ jobs:
   # ============================================
   build-firmware:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5        # ← v5 uses Node.js 24
       with:
         submodules: 'recursive'
         fetch-depth: 0
-    
+
     - name: Free up disk space
       run: |
         sudo rm -rf /usr/share/dotnet
         sudo rm -rf /opt/ghc
         sudo rm -rf "/usr/local/share/boost"
         sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-    
-    - name: Login to Docker Hub (optional, helps avoid rate limits)
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    # Docker login removed — was causing "Username and password required" error
+    # when secrets aren't set. Not needed for public ESP-IDF image.
+
+    - name: Generate icons font subset
+      run: |
+        cd firmware/main/scripts
+        npm install -g lv_font_conv
+        python3 gen_icons.py --no-font  # generate header + JS only, skip font (no TTF in CI)
       continue-on-error: true
-    
+
     - name: Setup ESP-IDF and Build
       uses: espressif/esp-idf-ci-action@v1
       with:
         esp_idf_version: v5.4.3
         target: esp32
         path: 'firmware'
-    
+        command: >
+          idf.py build
+
     - name: Fix Build Directory Permissions
       run: |
-        sudo chown -R runner:docker firmware/build
-    
+        sudo chown -R runner:runner firmware/build || true
+
     - name: Generate Build Info
       working-directory: firmware/build
       run: |
@@ -55,11 +60,11 @@ jobs:
         echo "Branch: ${{ github.ref_name }}" >> build-info.txt
         echo "" >> build-info.txt
         echo "## Binary Files:" >> build-info.txt
-        ls -lh *.bin >> build-info.txt
+        ls -lh *.bin >> build-info.txt 2>/dev/null || echo "No .bin files found" >> build-info.txt
         echo "" >> build-info.txt
         echo "## Checksums:" >> build-info.txt
-        sha256sum *.bin | tee firmware-checksums.txt
-    
+        sha256sum *.bin 2>/dev/null | tee firmware-checksums.txt || echo "No binaries to checksum"
+
     - name: Upload Firmware Binaries
       uses: actions/upload-artifact@v4
       with:
@@ -71,85 +76,54 @@ jobs:
           firmware/build/build-info.txt
           firmware/build/firmware-checksums.txt
         retention-days: 30
-    
+
     - name: Upload Flash Instructions
       uses: actions/upload-artifact@v4
       with:
         name: flash-instructions-${{ github.sha }}
         path: firmware/build/flasher_args.json
         retention-days: 30
+      continue-on-error: true
 
   # ============================================
   # Windows App Build
   # ============================================
   build-windows-app:
     runs-on: windows-latest
-    
+
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         submodules: 'recursive'
         fetch-depth: 0
-    
-    - name: Install Windows SDK with UWP Components
-      shell: pwsh
-      run: |
-        Write-Host "Installing Visual Studio Build Tools with UWP workload..."
-        
-        # Download Visual Studio Build Tools installer
-        Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vs_buildtools.exe" -OutFile "$env:TEMP\vs_buildtools.exe"
-        
-        # Install with UWP workload (includes UAP platform files)
-        Start-Process -Wait -FilePath "$env:TEMP\vs_buildtools.exe" -ArgumentList `
-          "--quiet", `
-          "--wait", `
-          "--norestart", `
-          "--nocache", `
-          "--add", "Microsoft.VisualStudio.Workload.UniversalBuildTools", `
-          "--add", "Microsoft.VisualStudio.Component.Windows10SDK.19041"
-        
-        Write-Host "Installation complete!"
-    
-    - name: Verify UAP Platform Files
-      shell: pwsh
-      run: |
-        Write-Host "Checking for UAP platform files..."
-        $uapPath = "C:\Program Files (x86)\Windows Kits\10\Platforms\UAP\10.0.19041.0"
-        if (Test-Path "$uapPath\Platform.xml") {
-          Write-Host "✅ UAP Platform.xml found at $uapPath"
-        } else {
-          Write-Host "❌ UAP Platform.xml not found"
-          Write-Host "Available SDK versions:"
-          Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\Platforms\UAP" -ErrorAction SilentlyContinue
-        }
-    
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '9.0.x'
-    
+
     - name: Display .NET Info
       run: dotnet --info
-    
+
     - name: Restore Dependencies
       working-directory: app/win
       run: dotnet restore
-    
+
     - name: Build Release
       working-directory: app/win
       run: dotnet build --configuration Release --no-restore
-    
+
     - name: Publish Self-Contained (Windows x64)
       working-directory: app/win
       run: |
         dotnet publish --configuration Release --runtime win-x64 --self-contained true --output ../../publish/win-x64
-    
+
     - name: Publish Framework-Dependent
       working-directory: app/win
       run: |
         dotnet publish --configuration Release --output ../../publish/framework-dependent
-    
+
     - name: Create Build Info
       shell: pwsh
       run: |
@@ -159,14 +133,14 @@ jobs:
         Commit: ${{ github.sha }}
         Branch: ${{ github.ref_name }}
         "@ | Out-File -FilePath publish/BUILD-INFO.txt -Encoding UTF8
-    
+
     - name: Upload Self-Contained Build
       uses: actions/upload-artifact@v4
       with:
         name: windows-app-standalone-${{ github.sha }}
         path: publish/win-x64/**/*
         retention-days: 30
-    
+
     - name: Upload Framework-Dependent Build
       uses: actions/upload-artifact@v4
       with:
@@ -183,35 +157,36 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    
+
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
-    
+      uses: actions/checkout@v5        # ← v5
+
     - name: Download Firmware
       uses: actions/download-artifact@v4
       with:
         name: esp32-firmware-${{ github.sha }}
         path: release/firmware
-    
+
     - name: Download Flash Instructions
       uses: actions/download-artifact@v4
       with:
         name: flash-instructions-${{ github.sha }}
         path: release/firmware
-    
+      continue-on-error: true
+
     - name: Download Windows App (Standalone)
       uses: actions/download-artifact@v4
       with:
         name: windows-app-standalone-${{ github.sha }}
         path: release/windows-standalone
-    
+
     - name: Download Windows App (Portable)
       uses: actions/download-artifact@v4
       with:
         name: windows-app-portable-${{ github.sha }}
         path: release/windows-portable
-    
+
     - name: Create ZIP Archives
       run: |
         cd release/firmware
@@ -220,10 +195,9 @@ jobs:
         zip -r ../Windows-App-Standalone-${{ github.ref_name }}.zip .
         cd ../windows-portable
         zip -r ../Windows-App-Portable-${{ github.ref_name }}.zip .
-        cd ../..
-    
+
     - name: Create Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2   # ← v2 uses Node.js 24
       with:
         files: |
           release/*.zip

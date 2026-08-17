@@ -4,7 +4,6 @@ firmware/build/
 firmware/patches.cmake_old
 firmware/sdkconfig.old
 firmware/managed_components/
-firmware/sdkconfig
 
 # Exclude examples from submodules
 firmware/components/*/examples/
@@ -39,4 +38,3 @@ firmware/main/data/icons/material_icons_used_24.bin
 
 #hide settings
 firmware/main/menu.json
-!firmware/main/menu.json_example
